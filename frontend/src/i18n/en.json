@@ -1,0 +1,129 @@
+{
+  "nav": {
+    "courses": "Courses",
+    "login": "Log In",
+    "signup": "Sign Up",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "logout": "Logout",
+    "tests": "Mock Tests"
+  },
+  "hero": {
+    "badge": "India's Most Trusted Prep Platform",
+    "title1": "Crack SSC & Banking",
+    "title2": "Exams with",
+    "highlight": "Certainty",
+    "subtitle": "Expert-led courses, rigorous mock tests, and comprehensive study material designed for ambitious students targeting top government jobs.",
+    "cta1": "Explore Courses",
+    "cta2": "Start Free Trial"
+  },
+  "stats": {
+    "students": "Active Students",
+    "videos": "Video Lectures",
+    "tests": "Mock Tests",
+    "success": "Success Rate"
+  },
+  "home": {
+    "examTitle": "Choose Your Target Exam",
+    "examSubtitle": "Specialized batches tailored exactly to the latest syllabus and patterns.",
+    "sscTitle": "SSC Exams",
+    "sscSub": "CGL, CHSL, MTS & more",
+    "bankTitle": "Banking Exams",
+    "bankSub": "SBI PO, IBPS, RBI & more",
+    "viewCourses": "View Courses",
+    "trendingTitle": "Trending Courses",
+    "trendingSubtitle": "Join our most popular batches right now.",
+    "viewAll": "View All",
+    "advantageTitle": "The SV Logics Advantage",
+    "advantageSubtitle": "Everything you need to crack government exams in one place."
+  },
+  "course": {
+    "viewDetails": "View Details",
+    "enrollNow": "Enroll Now",
+    "chapters": "Chapters",
+    "hours": "Hours",
+    "free": "Free Preview",
+    "locked": "Locked"
+  },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "loginSubtitle": "Log in to continue your preparation.",
+    "email": "Email Address",
+    "password": "Password",
+    "showPassword": "Show password",
+    "loginBtn": "Log In",
+    "noAccount": "Don't have an account?",
+    "signupFree": "Sign up for free",
+    "createAccount": "Create your account",
+    "registerSubtitle": "It's free. No credit card required.",
+    "fullName": "Full Name",
+    "phone": "Phone Number",
+    "optional": "optional",
+    "registerBtn": "Create Account",
+    "haveAccount": "Already have an account?",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "agreeTo": "By signing up, you agree to our",
+    "and": "and",
+    "quote": "\"Success is where preparation and opportunity meet.\"",
+    "quoteAuthor": "Bobby Unser",
+    "trusted": "Trusted by 50,000+ students across India",
+    "joinStudents": "Join 50,000+ students already preparing with SV Logics",
+    "googleLogin": "Continue with Google",
+    "orDivider": "or"
+  },
+  "dashboard": {
+    "title": "Student Dashboard",
+    "enrolled": "Enrolled Courses",
+    "testsAttempted": "Tests Attempted",
+    "streak": "Day Streak",
+    "avgScore": "Avg Score",
+    "recentActivity": "Recent Test Activity",
+    "enrolledCourses": "My Courses",
+    "noTests": "No tests attempted yet.",
+    "noCourses": "No courses enrolled yet.",
+    "exploreCourses": "Explore Courses"
+  },
+  "tests": {
+    "title": "Mock Tests",
+    "subtitle": "Practice with our comprehensive test series",
+    "start": "Start Test",
+    "questions": "Questions",
+    "minutes": "Minutes",
+    "difficulty": "Difficulty",
+    "submit": "Submit Test",
+    "confirmSubmit": "Are you sure you want to submit?",
+    "unanswered": "unanswered questions",
+    "result": "Your Score",
+    "correct": "Correct",
+    "wrong": "Wrong",
+    "skipped": "Skipped",
+    "viewReview": "View Answer Review",
+    "backToDash": "Back to Dashboard"
+  },
+  "profile": {
+    "title": "My Profile",
+    "editProfile": "Edit Profile",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "save": "Save Changes"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong.",
+    "retry": "Try Again",
+    "back": "Back",
+    "search": "Search",
+    "filter": "Filter",
+    "all": "All Courses",
+    "price": "Price",
+    "free": "Free"
+  },
+  "footer": {
+    "tagline": "India's most trusted platform for SSC & Banking exam preparation.",
+    "quickLinks": "Quick Links",
+    "categories": "Categories",
+    "copyright": "© 2024 SV Logics. All rights reserved."
+  }
+}
