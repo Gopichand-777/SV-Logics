@@ -18,6 +18,9 @@ export default function TestSession() {
   const [showConfirm, setShowConfirm] = useState(false);
   const startTime = useRef(Date.now());
   const timerRef = useRef(null);
+  // BUG-007: Keep a ref that always holds the latest answers so the timer
+  // callback (which captures a stale closure) can still read current answers
+  const answersRef = useRef({});
 
   useEffect(() => {
     testsApi.getById(id)
@@ -41,12 +44,24 @@ export default function TestSession() {
     return () => clearInterval(timerRef.current);
   }, [test]);
 
+  // BUG-007: Wrapper that updates both state and the ref together so the
+  // stale handleSubmit inside setInterval always reads current answers
+  const updateAnswers = (updater) => {
+    setAnswers(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      answersRef.current = next;
+      return next;
+    });
+  };
+
   const handleSubmit = async (autoSubmit = false) => {
     if (!autoSubmit && !showConfirm) { setShowConfirm(true); return; }
     setShowConfirm(false);
     setSubmitting(true);
     clearInterval(timerRef.current);
-    const answerList = Object.entries(answers).map(([questionId, selectedOption]) => ({ questionId: parseInt(questionId), selectedOption }));
+    // BUG-007: Use answersRef.current — not the stale `answers` from closure
+    const currentAnswers = answersRef.current;
+    const answerList = Object.entries(currentAnswers).map(([questionId, selectedOption]) => ({ questionId: parseInt(questionId), selectedOption }));
     const timeTakenSec = Math.floor((Date.now() - startTime.current) / 1000);
     try {
       const { data } = await testsApi.submit(id, { answers: answerList, timeTakenSec });
@@ -107,7 +122,16 @@ export default function TestSession() {
                   <button
                     key={opt}
                     className={`option-btn ${answers[q.id] === opt ? 'selected' : ''}`}
-                    onClick={() => setAnswers(a => ({ ...a, [q.id]: a[q.id] === opt ? undefined : opt }))}
+                    onClick={() => {
+                      // BUG-009: Previously set key to `undefined` instead of deleting it,
+                      // breaking the answered-count display and palette coloring.
+                      updateAnswers(a => {
+                        const next = { ...a };
+                        if (next[q.id] === opt) delete next[q.id];
+                        else next[q.id] = opt;
+                        return next;
+                      });
+                    }}
                   >
                     <span className="option-letter">{OPT_LABELS[opt]}</span>
                     <span>{OPT_TEXT(q, opt)}</span>
@@ -124,7 +148,7 @@ export default function TestSession() {
                 className="btn btn-outline"
               >← Previous</button>
               <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                {Object.keys(answers).filter(k => answers[k]).length} / {questions.length} answered
+                {Object.keys(answers).length} / {questions.length} answered
               </span>
               {currentQ < questions.length - 1
                 ? <button onClick={() => setCurrentQ(q => q + 1)} className="btn btn-primary">Next →</button>
@@ -175,7 +199,7 @@ export default function TestSession() {
               <AlertCircle size={18} color="var(--color-warning)" style={{ flexShrink: 0, marginTop: 2 }} />
               <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
                 You have <strong style={{ color: 'var(--color-text)' }}>
-                  {questions.length - Object.keys(answers).filter(k => answers[k]).length}
+                  {questions.length - Object.keys(answers).length}
                 </strong> {t('tests.unanswered')}. Are you sure you want to submit?
               </p>
             </div>

@@ -7,7 +7,7 @@ import { useLang } from '../../context/LanguageContext.jsx';
 
 export default function Login() {
   const { t } = useLang();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPwd, setShowPwd] = useState(false);
@@ -23,7 +23,14 @@ export default function Login() {
     try {
       const { data } = await authApi.login(form);
       login(data.token, data.user);
-      navigate(data.user.role === 'student' ? '/dashboard' : '/dashboard');
+      // BUG-005: Both branches previously pointed to '/dashboard' — admins were silently
+      // let into the student portal. Now block them with a clear error.
+      if (['super_admin', 'content_manager'].includes(data.user.role)) {
+        logout();
+        setError('Admin accounts must log in via the Admin Panel (port 5174).');
+        return;
+      }
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {

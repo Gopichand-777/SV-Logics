@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Users, BookOpen, FileText, CreditCard, TrendingUp, Activity } from 'lucide-react';
 import { adminApi } from '../api/admin.api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -66,7 +67,8 @@ export default function AdminDashboard() {
           { icon: <FileText size={20} />, label: 'Manage Tests', desc: 'Create and manage mock test series.', href: '/tests', color: '#3b82f6' },
           { icon: <Activity size={20} />, label: 'View Analytics', desc: 'Check enrollments and payment data.', href: isSuperAdmin ? '/enrollments' : '/courses', color: '#10b981' },
         ].map((a, i) => (
-          <a key={i} href={a.href} style={{ display: 'block', textDecoration: 'none' }}>
+          // BUG-008: Was <a href> causing full page reload and losing React auth state
+          <Link key={i} to={a.href} style={{ display: 'block', textDecoration: 'none' }}>
             <div className="card" style={{ padding: 24, cursor: 'pointer', transition: 'var(--transition)' }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.borderColor = a.color; }}
               onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.borderColor = ''; }}>
@@ -76,7 +78,7 @@ export default function AdminDashboard() {
               <h3 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 6 }}>{a.label}</h3>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{a.desc}</p>
             </div>
-          </a>
+          </Link>
         ))}
       </div>
 

@@ -40,8 +40,8 @@ export const getDashboard = async (req, res) => {
     // Enrolled courses details
     const enrolledCourses = await db.select({
       id: courses.id,
-      title: courses.title,
-      category: courses.category,
+      courseTitle: courses.title,       // Dashboard.jsx reads c.courseTitle
+      courseCategory: courses.category, // Dashboard.jsx reads c.courseCategory
       thumbnailUrl: courses.thumbnailUrl,
       durationHours: courses.durationHours,
       chaptersCount: courses.chaptersCount,
