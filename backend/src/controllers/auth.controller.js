@@ -118,6 +118,10 @@ export const getMe = async (req, res) => {
 export const updateMe = async (req, res) => {
   try {
     const { name, phone, avatarUrl } = req.body;
+    // BUG-010: Empty name was silently ignored — now explicitly rejected
+    if (name !== undefined && name.trim() === '') {
+      return res.status(400).json({ error: 'Name cannot be empty.' });
+    }
     const [updated] = await db.update(users)
       .set({
         name: name?.trim() || undefined,

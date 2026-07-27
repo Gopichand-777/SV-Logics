@@ -70,6 +70,7 @@ export const adminApi = {
   createAnnouncement: (data) => api.post('/admin/announcements', data),
 
   // Materials
+  getMaterials: () => api.get('/admin/materials'),
   addMaterial: (data) => api.post('/admin/materials', data),
   deleteMaterial: (id) => api.delete(`/admin/materials/${id}`),
 };

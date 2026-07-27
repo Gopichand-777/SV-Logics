@@ -91,12 +91,15 @@ export const submitTest = async (req, res) => {
     });
 
     score = Math.max(0, Math.round(score * 100) / 100);
+    // BUG-004: Compute rounded score once and reuse in both DB insert and API response
+    // Previously, raw score was returned in response while Math.round(score) went to DB
+    const roundedScore = Math.round(score);
 
     // Save attempt
     const [attempt] = await db.insert(testAttempts).values({
       userId: req.user.id,
       testId: parseInt(id),
-      score: Math.round(score),
+      score: roundedScore,
       totalMarks,
       correctCount,
       wrongCount,
@@ -119,12 +122,12 @@ export const submitTest = async (req, res) => {
       message: 'Test submitted successfully!',
       attempt: {
         id: attempt.id,
-        score,
+        score: roundedScore,
         totalMarks,
         correctCount,
         wrongCount,
         unattempted,
-        percentage: Math.round((score / totalMarks) * 100),
+        percentage: Math.round((roundedScore / totalMarks) * 100),
       },
     });
   } catch (err) {

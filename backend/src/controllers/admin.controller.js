@@ -130,11 +130,25 @@ export const adminCreateCourse = async (req, res) => {
 export const adminUpdateCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
-    if (updates.price) updates.price = parseInt(updates.price);
-    if (updates.originalPrice) updates.originalPrice = parseInt(updates.originalPrice);
-    updates.updatedAt = new Date();
-
+    // BUG-003: Whitelist only permitted fields — never spread raw req.body into DB
+    const {
+      title, description, category, examType, price, originalPrice,
+      durationHours, instructor, thumbnailUrl, isPublished, isFeatured,
+    } = req.body;
+    const updates = {
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(category !== undefined && { category }),
+      ...(examType !== undefined && { examType }),
+      ...(price !== undefined && { price: parseInt(price) }),
+      ...(originalPrice !== undefined && { originalPrice: parseInt(originalPrice) }),
+      ...(durationHours !== undefined && { durationHours }),
+      ...(instructor !== undefined && { instructor }),
+      ...(thumbnailUrl !== undefined && { thumbnailUrl }),
+      ...(isPublished !== undefined && { isPublished }),
+      ...(isFeatured !== undefined && { isFeatured }),
+      updatedAt: new Date(),
+    };
     const [course] = await db.update(courses).set(updates)
       .where(eq(courses.id, parseInt(id))).returning();
     return res.json({ message: 'Course updated!', course });
@@ -188,7 +202,17 @@ export const adminCreateChapter = async (req, res) => {
 export const adminUpdateChapter = async (req, res) => {
   try {
     const { id } = req.params;
-    const [chapter] = await db.update(chapters).set(req.body)
+    // BUG-003: Whitelist only permitted fields
+    const { title, description, videoUrl, durationMin, orderIndex, isFree } = req.body;
+    const updates = {
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(videoUrl !== undefined && { videoUrl }),
+      ...(durationMin !== undefined && { durationMin: parseInt(durationMin) }),
+      ...(orderIndex !== undefined && { orderIndex: parseInt(orderIndex) }),
+      ...(isFree !== undefined && { isFree }),
+    };
+    const [chapter] = await db.update(chapters).set(updates)
       .where(eq(chapters.id, parseInt(id))).returning();
     return res.json({ message: 'Chapter updated!', chapter });
   } catch (err) {
@@ -238,7 +262,18 @@ export const adminCreateTest = async (req, res) => {
 
 export const adminUpdateTest = async (req, res) => {
   try {
-    const [test] = await db.update(mockTests).set(req.body)
+    // BUG-003: Whitelist only permitted fields
+    const { title, description, courseId, category, durationMinutes, difficulty, isPublished } = req.body;
+    const updates = {
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
+      ...(courseId !== undefined && { courseId: courseId ? parseInt(courseId) : null }),
+      ...(category !== undefined && { category }),
+      ...(durationMinutes !== undefined && { durationMinutes: parseInt(durationMinutes) }),
+      ...(difficulty !== undefined && { difficulty }),
+      ...(isPublished !== undefined && { isPublished }),
+    };
+    const [test] = await db.update(mockTests).set(updates)
       .where(eq(mockTests.id, parseInt(req.params.id))).returning();
     return res.json({ message: 'Test updated!', test });
   } catch (err) {
@@ -323,7 +358,24 @@ export const adminBulkImportQuestions = async (req, res) => {
 
 export const adminUpdateQuestion = async (req, res) => {
   try {
-    const [q] = await db.update(questions).set(req.body)
+    // BUG-003: Whitelist only permitted fields
+    const {
+      questionText, optionA, optionB, optionC, optionD,
+      correctOption, explanation, marks, negativeMarks, orderIndex,
+    } = req.body;
+    const updates = {
+      ...(questionText !== undefined && { questionText }),
+      ...(optionA !== undefined && { optionA }),
+      ...(optionB !== undefined && { optionB }),
+      ...(optionC !== undefined && { optionC }),
+      ...(optionD !== undefined && { optionD }),
+      ...(correctOption !== undefined && { correctOption }),
+      ...(explanation !== undefined && { explanation }),
+      ...(marks !== undefined && { marks: parseInt(marks) }),
+      ...(negativeMarks !== undefined && { negativeMarks: String(negativeMarks) }),
+      ...(orderIndex !== undefined && { orderIndex: parseInt(orderIndex) }),
+    };
+    const [q] = await db.update(questions).set(updates)
       .where(eq(questions.id, parseInt(req.params.id))).returning();
     return res.json({ message: 'Question updated!', question: q });
   } catch (err) {
@@ -408,6 +460,17 @@ export const adminCreateAnnouncement = async (req, res) => {
 };
 
 // ── STUDY MATERIALS ───────────────────────────────────────────────────────────
+// BUG-006: Added missing GET handler — was causing 404 on Admin Study Materials page
+export const adminGetMaterials = async (req, res) => {
+  try {
+    const materials = await db.select().from(studyMaterials).orderBy(desc(studyMaterials.createdAt));
+    return res.json({ materials });
+  } catch (err) {
+    console.error('Get materials error:', err);
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
 export const adminAddMaterial = async (req, res) => {
   try {
     const { courseId, chapterId, title, type, fileUrl } = req.body;

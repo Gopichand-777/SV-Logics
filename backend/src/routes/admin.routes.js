@@ -10,7 +10,7 @@ import {
   adminGetQuestions, adminCreateQuestion, adminUpdateQuestion, adminDeleteQuestion, adminBulkImportQuestions,
   adminGetEnrollments, adminGetPayments,
   adminGetAnnouncements, adminCreateAnnouncement,
-  adminAddMaterial, adminDeleteMaterial,
+  adminGetMaterials, adminAddMaterial, adminDeleteMaterial,
 } from '../controllers/admin.controller.js';
 
 const router = Router();
@@ -60,6 +60,8 @@ router.get('/announcements', adminGetAnnouncements);
 router.post('/announcements', adminCreateAnnouncement);
 
 // ── Study Materials ──
+// BUG-006: Added missing GET route (was 404 before)
+router.get('/materials', adminGetMaterials);
 router.post('/materials', adminAddMaterial);
 router.delete('/materials/:id', adminDeleteMaterial);
 
