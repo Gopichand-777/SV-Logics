@@ -43,7 +43,9 @@ export const getCourseById = async (req, res) => {
       // Only include video URL for free chapters — must use SQL CASE, not JS ternary
       // (chapters.isFree is a Drizzle column ref object, always truthy in JS)
       videoUrl: sql`CASE WHEN ${chapters.isFree} = true THEN ${chapters.videoUrl} ELSE NULL END`,
-    }).from(chapters).where(eq(chapters.courseId, parseInt(id)));
+    }).from(chapters)
+      .where(eq(chapters.courseId, parseInt(id)))
+      .orderBy(chapters.orderIndex);
 
     const materials = await db.select().from(studyMaterials).where(eq(studyMaterials.courseId, parseInt(id)));
 

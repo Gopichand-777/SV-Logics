@@ -26,7 +26,7 @@ export default function CourseDetail() {
     coursesApi.getById(id)
       .then(res => {
         setCourse(res.data.course);
-        setChapters(res.data.chapters || []);
+        setChapters((res.data.chapters || []).sort((a, b) => a.orderIndex - b.orderIndex));
         setMaterials(res.data.materials || []);
       })
       .catch(() => navigate('/courses'))
