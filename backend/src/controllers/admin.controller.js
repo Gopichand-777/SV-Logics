@@ -1,7 +1,9 @@
 import { db } from '../db/index.js';
 import {
-  users, courses, chapters, mockTests, questions,
-  enrollments, payments, testAttempts, studyMaterials, announcements
+  students, admins, contentManagers,
+  courses, chapters, mockTests, questions, courseSubjects,
+  enrollments, payments, testAttempts, attemptAnswers,
+  userStreaks, studyMaterials, announcements
 } from '../db/schema.js';
 import { eq, desc, count, sum, and, like, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
@@ -9,16 +11,16 @@ import bcrypt from 'bcryptjs';
 // ── ANALYTICS ─────────────────────────────────────────────────────────────────
 export const getOverview = async (req, res) => {
   try {
-    const [{ totalUsers }] = await db.select({ totalUsers: count() }).from(users);
+    const [{ totalStudents }] = await db.select({ totalStudents: count() }).from(students);
     const [{ totalCourses }] = await db.select({ totalCourses: count() }).from(courses);
     const [{ totalEnrollments }] = await db.select({ totalEnrollments: count() }).from(enrollments);
     const [{ totalTests }] = await db.select({ totalTests: count() }).from(testAttempts);
     const [{ totalRevenue }] = await db.select({ totalRevenue: sum(payments.amount) })
-      .from(payments).where(eq(payments.status, 'success'));
+      .from(payments).where(sql`${payments.status} IN ('success', 'admin_grant')`);
 
     return res.json({
       stats: {
-        totalUsers: Number(totalUsers),
+        totalUsers: Number(totalStudents),
         totalCourses: Number(totalCourses),
         totalEnrollments: Number(totalEnrollments),
         totalTests: Number(totalTests),
@@ -31,70 +33,369 @@ export const getOverview = async (req, res) => {
   }
 };
 
-// ── USERS ─────────────────────────────────────────────────────────────────────
-export const getUsers = async (req, res) => {
+// ── STUDENTS (created by admin) ───────────────────────────────────────────────────
+export const getStudents = async (req, res) => {
   try {
-    const { search, role } = req.query;
-    let allUsers = await db.select({
-      id: users.id, name: users.name, email: users.email,
-      phone: users.phone, role: users.role, isActive: users.isActive, createdAt: users.createdAt,
-    }).from(users).orderBy(desc(users.createdAt));
+    const { search } = req.query;
+    let all = await db.select({
+      id: students.id, name: students.name, username: students.username,
+      phone: students.phone, isActive: students.isActive, createdAt: students.createdAt,
+    }).from(students).orderBy(desc(students.createdAt));
 
-    if (search) allUsers = allUsers.filter(u =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
+    if (search) all = all.filter(s =>
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.username.toLowerCase().includes(search.toLowerCase())
     );
-    if (role) allUsers = allUsers.filter(u => u.role === role);
-
-    return res.json({ users: allUsers, total: allUsers.length });
+    return res.json({ users: all, total: all.length });
   } catch (err) {
     return res.status(500).json({ error: 'Server error.' });
   }
 };
 
-export const updateUserRole = async (req, res) => {
+export const createStudent = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { role } = req.body;
-    const allowed = ['student', 'content_manager', 'super_admin'];
-    if (!allowed.includes(role)) return res.status(400).json({ error: 'Invalid role.' });
+    const { name, username, password } = req.body;
+    if (!name || !username || !password) {
+      return res.status(400).json({ error: 'Name, username, and password are required.' });
+    }
+    if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters.' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
-    const [updated] = await db.update(users).set({ role, updatedAt: new Date() })
-      .where(eq(users.id, parseInt(id))).returning({ id: users.id, name: users.name, role: users.role });
-    return res.json({ message: 'Role updated.', user: updated });
+    const usernameLower = username.toLowerCase().trim();
+    const [existing] = await db.select({ id: students.id }).from(students)
+      .where(eq(students.username, usernameLower));
+    if (existing) return res.status(409).json({ error: 'Username already taken. Please choose another.' });
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const [newStudent] = await db.insert(students).values({
+      name: name.trim(),
+      username: usernameLower,
+      passwordHash,
+    }).returning({ id: students.id, name: students.name, username: students.username, createdAt: students.createdAt });
+
+    return res.status(201).json({ message: 'Student created successfully!', student: newStudent });
   } catch (err) {
+    console.error('Create student error:', err);
     return res.status(500).json({ error: 'Server error.' });
   }
 };
 
-export const updateUserStatus = async (req, res) => {
+export const updateStudentStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;
-    const [updated] = await db.update(users).set({ isActive, updatedAt: new Date() })
-      .where(eq(users.id, parseInt(id))).returning({ id: users.id, isActive: users.isActive });
-    return res.json({ message: `User ${isActive ? 'activated' : 'deactivated'}.`, user: updated });
+    const [updated] = await db.update(students).set({ isActive, updatedAt: new Date() })
+      .where(eq(students.id, parseInt(id))).returning({ id: students.id, isActive: students.isActive });
+    return res.json({ message: `Student ${isActive ? 'activated' : 'deactivated'}.`, student: updated });
   } catch (err) {
     return res.status(500).json({ error: 'Server error.' });
   }
 };
 
-export const deleteUser = async (req, res) => {
+export const deleteStudent = async (req, res) => {
   try {
     const { id } = req.params;
-    if (parseInt(id) === req.user.id) return res.status(400).json({ error: 'Cannot delete yourself.' });
-    await db.delete(users).where(eq(users.id, parseInt(id)));
-    return res.json({ message: 'User deleted.' });
+    const studentId = parseInt(id);
+
+    // Must delete in dependency order (child → parent) to satisfy FK constraints:
+    // 1. attempt_answers references test_attempts
+    // 2. test_attempts references students
+    // 3. enrollments references payments AND students
+    // 4. payments references students
+    // 5. user_streaks references students
+
+    // Get all test attempt IDs for this student first
+    const attempts = await db.select({ id: testAttempts.id })
+      .from(testAttempts).where(eq(testAttempts.studentId, studentId));
+    const attemptIds = attempts.map(a => a.id);
+
+    // 1. Delete attempt answers for each test attempt
+    if (attemptIds.length > 0) {
+      for (const attemptId of attemptIds) {
+        await db.delete(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId));
+      }
+    }
+
+    // 2. Delete test attempts
+    await db.delete(testAttempts).where(eq(testAttempts.studentId, studentId));
+
+    // 3. Delete enrollments (references payments.id — so delete before payments)
+    await db.delete(enrollments).where(eq(enrollments.studentId, studentId));
+
+    // 4. Delete payments
+    await db.delete(payments).where(eq(payments.studentId, studentId));
+
+    // 5. Delete user streaks
+    await db.delete(userStreaks).where(eq(userStreaks.studentId, studentId));
+
+    // 6. Finally delete the student
+    const [deleted] = await db.delete(students)
+      .where(eq(students.id, studentId))
+      .returning({ id: students.id });
+
+    if (!deleted) return res.status(404).json({ error: 'Student not found.' });
+
+    return res.json({ message: 'Student and all associated data deleted successfully.' });
   } catch (err) {
+    console.error('Delete student error:', err.message);
+    return res.status(500).json({ error: 'Could not delete student: ' + err.message });
+  }
+};
+
+// ── ADMIN STAFF (admins + content_managers) ──────────────────────────────────
+export const getAdminStaff = async (req, res) => {
+  try {
+    const adminList = await db.select({
+      id: admins.id, name: admins.name, email: admins.email,
+      isActive: admins.isActive, createdAt: admins.createdAt,
+    }).from(admins).orderBy(desc(admins.createdAt));
+
+    const cmList = await db.select({
+      id: contentManagers.id, name: contentManagers.name, email: contentManagers.email,
+      isActive: contentManagers.isActive, createdAt: contentManagers.createdAt,
+    }).from(contentManagers).orderBy(desc(contentManagers.createdAt));
+
+    const staff = [
+      ...adminList.map(a => ({ ...a, role: 'super_admin' })),
+      ...cmList.map(c => ({ ...c, role: 'content_manager' })),
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return res.json({ staff, total: staff.length });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+export const createAdminStaff = async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ error: 'Name, email, password, and role are required.' });
+    }
+
+    // SECURITY: Super admin accounts can only be created directly in the database.
+    // This prevents privilege escalation via the API.
+    if (role === 'super_admin') {
+      return res.status(403).json({
+        error: 'Super admin accounts cannot be created via the admin panel',
+      });
+    }
+
+    if (role !== 'content_manager') {
+      return res.status(400).json({ error: 'Invalid role. Only content_manager accounts can be created here.' });
+    }
+
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+
+    const emailLower = email.toLowerCase().trim();
+    // Check uniqueness across both tables
+    const [existAdmin] = await db.select({ id: admins.id }).from(admins).where(eq(admins.email, emailLower));
+    const [existCM] = await db.select({ id: contentManagers.id }).from(contentManagers).where(eq(contentManagers.email, emailLower));
+    if (existAdmin || existCM) return res.status(409).json({ error: 'An account with this email already exists.' });
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const [newStaff] = await db.insert(contentManagers).values({
+      name: name.trim(), email: emailLower, passwordHash,
+    }).returning({ id: contentManagers.id, name: contentManagers.name, email: contentManagers.email, createdAt: contentManagers.createdAt });
+
+    return res.status(201).json({ message: 'Content manager account created!', staff: { ...newStaff, role: 'content_manager' } });
+  } catch (err) {
+    console.error('Create staff error:', err);
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+
+export const updateAdminStaffStatus = async (req, res) => {
+  try {
+    const { id, role } = req.params;
+    const { isActive } = req.body;
+    if (parseInt(id) === req.user.id) return res.status(400).json({ error: 'Cannot deactivate yourself.' });
+    const table = role === 'super_admin' ? admins : contentManagers;
+    await db.update(table).set({ isActive, updatedAt: new Date() }).where(eq(table.id, parseInt(id)));
+    return res.json({ message: `Staff ${isActive ? 'activated' : 'deactivated'}.` });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+export const deleteAdminStaff = async (req, res) => {
+  try {
+    const { id, role } = req.params;
+    const staffId = parseInt(id);
+
+    if (staffId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot delete yourself.' });
+    }
+
+    if (role === 'super_admin') {
+      // announcements.created_by has a FK → admins.id with no ON DELETE clause,
+      // so PostgreSQL will RESTRICT the delete if this admin authored any announcements.
+      // Null it out first so the delete can proceed cleanly.
+      await db.update(announcements)
+        .set({ createdBy: null })
+        .where(eq(announcements.createdBy, staffId));
+    }
+
+    const table = role === 'super_admin' ? admins : contentManagers;
+    await db.delete(table).where(eq(table.id, staffId));
+
+    return res.json({ message: 'Staff account deleted.' });
+  } catch (err) {
+    console.error('Delete staff error:', err);
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+
+// ── COURSE ACCESS MANAGEMENT (grant / revoke without payment) ─────────────────
+
+export const adminGetStudentCourses = async (req, res) => {
+  try {
+    const studentId = parseInt(req.params.studentId);
+
+    // Get all published courses
+    const allCourses = await db.select({
+      id: courses.id,
+      title: courses.title,
+      category: courses.category,
+      thumbnailUrl: courses.thumbnailUrl,
+      price: courses.price,
+    }).from(courses).where(eq(courses.isPublished, true));
+
+    // Get the student's current enrollments
+    const enrolled = await db.select({ courseId: enrollments.courseId })
+      .from(enrollments).where(eq(enrollments.studentId, studentId));
+    const enrolledIds = new Set(enrolled.map(e => e.courseId));
+
+    const result = allCourses.map(c => ({
+      ...c,
+      isEnrolled: enrolledIds.has(c.id),
+    }));
+
+    return res.json({ courses: result });
+  } catch (err) {
+    console.error('Get student courses error:', err);
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+export const adminGrantCourseAccess = async (req, res) => {
+  try {
+    const studentId = parseInt(req.params.studentId);
+    const courseId = parseInt(req.params.courseId);
+
+    // Verify student exists
+    const [student] = await db.select({ id: students.id, name: students.name })
+      .from(students).where(eq(students.id, studentId));
+    if (!student) return res.status(404).json({ error: 'Student not found.' });
+
+    // Verify course exists + get price
+    const [course] = await db.select({ id: courses.id, title: courses.title, price: courses.price })
+      .from(courses).where(eq(courses.id, courseId));
+    if (!course) return res.status(404).json({ error: 'Course not found.' });
+
+    // Check if already enrolled — avoid duplicate payment
+    const [existing] = await db.select({ id: enrollments.id })
+      .from(enrollments)
+      .where(and(eq(enrollments.studentId, studentId), eq(enrollments.courseId, courseId)));
+    if (existing) {
+      return res.status(409).json({ error: 'Student is already enrolled in this course.' });
+    }
+
+    // Create a payment record for tracking purposes
+    // status = 'admin_grant' | gateway = 'admin' | amount = course price
+    const [payment] = await db.insert(payments).values({
+      studentId,
+      courseId,
+      amount: course.price,      // full course price in paise
+      currency: 'INR',
+      status: 'admin_grant',     // distinct status so reports can filter
+      gateway: 'admin',           // granted by admin, not a payment gateway
+      paymentMethod: 'admin_grant',
+      paidAt: new Date(),        // treat as immediately paid
+    }).returning();
+
+    // Create enrollment linked to the payment
+    await db.insert(enrollments).values({
+      studentId,
+      courseId,
+      paymentId: payment.id,
+    });
+
+    return res.status(201).json({
+      message: `Access granted: ${student.name} enrolled in ${course.title}`,
+      payment: {
+        id: payment.id,
+        amount: course.price,
+        status: 'admin_grant',
+      },
+    });
+  } catch (err) {
+    console.error('Grant access error:', err);
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+export const adminRevokeCourseAccess = async (req, res) => {
+  try {
+    const studentId = parseInt(req.params.studentId);
+    const courseId = parseInt(req.params.courseId);
+
+    // Find the enrollment first so we can clean up the linked payment
+    const [enrollment] = await db.select({ id: enrollments.id, paymentId: enrollments.paymentId })
+      .from(enrollments)
+      .where(and(eq(enrollments.studentId, studentId), eq(enrollments.courseId, courseId)));
+
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found.' });
+    }
+
+    // Delete enrollment
+    await db.delete(enrollments).where(eq(enrollments.id, enrollment.id));
+
+    // If this enrollment was created by an admin grant, delete the payment record too
+    if (enrollment.paymentId) {
+      const [pmt] = await db.select({ id: payments.id, status: payments.status })
+        .from(payments).where(eq(payments.id, enrollment.paymentId));
+      if (pmt && pmt.status === 'admin_grant') {
+        await db.delete(payments).where(eq(payments.id, pmt.id));
+      }
+    }
+
+    return res.json({ message: 'Course access revoked.' });
+  } catch (err) {
+    console.error('Revoke access error:', err);
     return res.status(500).json({ error: 'Server error.' });
   }
 };
 
 // ── COURSES ───────────────────────────────────────────────────────────────────
 export const adminGetCourses = async (req, res) => {
+
   try {
-    const allCourses = await db.select().from(courses).orderBy(desc(courses.createdAt));
-    return res.json({ courses: allCourses });
+    // IMPORTANT: Drizzle param-binding inside sql`` sends column refs as NULL.
+    // Use raw SQL so `c.id` is a literal identifier, not a bound parameter.
+    const { rows } = await db.execute(
+      sql.raw(`SELECT c.*,
+                      (SELECT COUNT(*) FROM chapters ch WHERE ch.course_id = c.id)::int AS chapters_count
+               FROM   courses c
+               ORDER  BY c.created_at DESC`)
+    );
+
+    const normalised = rows.map(r => ({
+      ...r,
+      chaptersCount: r.chapters_count ?? r.chapterscount ?? 0,
+      durationHours: r.duration_hours ?? r.durationhours ?? 0,
+      isPublished: r.is_published ?? r.ispublished ?? false,
+      isFeatured: r.is_featured ?? r.isfeatured ?? false,
+      originalPrice: r.original_price ?? r.originalprice ?? null,
+      thumbnailUrl: r.thumbnail_url ?? r.thumbnailurl ?? null,
+      createdAt: r.created_at ?? r.createdat ?? null,
+      examType: r.exam_type ?? r.examtype ?? null,
+    }));
+
+    return res.json({ courses: normalised });
   } catch (err) {
     return res.status(500).json({ error: 'Server error.' });
   }
@@ -166,13 +467,103 @@ export const adminDeleteCourse = async (req, res) => {
   }
 };
 
+// ── COURSE SUBJECTS ──────────────────────────────────────────────────────────────────
+export const adminGetSubjects = async (req, res) => {
+  try {
+    const subjects = await db.select().from(courseSubjects)
+      .where(eq(courseSubjects.courseId, parseInt(req.params.courseId)))
+      .orderBy(courseSubjects.orderIndex);
+    return res.json({ subjects });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+export const adminCreateSubject = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { name, orderIndex } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Subject name is required.' });
+
+    // Auto-assign orderIndex if not provided
+    let order = parseInt(orderIndex);
+    if (!order) {
+      const existing = await db.select().from(courseSubjects)
+        .where(eq(courseSubjects.courseId, parseInt(courseId)));
+      order = existing.length + 1;
+    }
+
+    const [subject] = await db.insert(courseSubjects).values({
+      courseId: parseInt(courseId),
+      name: name.trim(),
+      orderIndex: order,
+    }).returning();
+    return res.status(201).json({ message: 'Subject created!', subject });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+export const adminUpdateSubject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, orderIndex } = req.body;
+    const updates = {
+      ...(name?.trim() && { name: name.trim() }),
+      ...(orderIndex && { orderIndex: parseInt(orderIndex) }),
+    };
+    if (Object.keys(updates).length === 0)
+      return res.status(400).json({ error: 'Nothing to update.' });
+
+    const [subject] = await db.update(courseSubjects).set(updates)
+      .where(eq(courseSubjects.id, parseInt(id))).returning();
+    if (!subject) return res.status(404).json({ error: 'Subject not found.' });
+    // Renaming this one row instantly reflects everywhere chapters/tests are joined
+    return res.json({ message: 'Subject updated!', subject });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+export const adminDeleteSubject = async (req, res) => {
+  try {
+    // FK ON DELETE SET NULL means chapters/tests referencing this subject_id
+    // will have subject_id = NULL and fall under 'General' on the website.
+    await db.delete(courseSubjects).where(eq(courseSubjects.id, parseInt(req.params.id)));
+    return res.json({ message: 'Subject deleted. Chapters moved to General.' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
 // ── CHAPTERS ──────────────────────────────────────────────────────────────────
 export const adminGetChapters = async (req, res) => {
+
   try {
-    const courseChapters = await db.select().from(chapters)
-      .where(eq(chapters.courseId, parseInt(req.params.courseId)))
-      .orderBy(chapters.orderIndex);
-    return res.json({ chapters: courseChapters });
+    const { rows } = await db.execute(sql.raw(`
+      SELECT ch.*,
+             cs.name        AS subject_name,
+             cs.order_index AS subject_order
+      FROM   chapters ch
+      LEFT JOIN course_subjects cs ON cs.id = ch.subject_id
+      WHERE  ch.course_id = ${parseInt(req.params.courseId)}
+      ORDER  BY ch.order_index
+    `));
+    const chapterList = rows.map(r => ({
+      id: r.id,
+      courseId: r.course_id,
+      title: r.title,
+      subjectId: r.subject_id ?? null,
+      subjectName: r.subject_name ?? r.subject ?? null,
+      description: r.description,
+      videoKey: r.video_key ?? null,   // R2 key for private video (e.g. "videos/uuid.mp4")
+      videoUrl: r.video_url ?? null,   // External URL (YouTube embed, etc.)
+      durationMin: r.duration_min,
+      orderIndex: r.order_index,
+      isFree: r.is_free,
+      createdAt: r.created_at,
+    }));
+    return res.json({ chapters: chapterList });
   } catch (err) {
     return res.status(500).json({ error: 'Server error.' });
   }
@@ -181,18 +572,30 @@ export const adminGetChapters = async (req, res) => {
 export const adminCreateChapter = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { title, description, videoUrl, durationMin, orderIndex, isFree } = req.body;
+    // videoKey: private R2 key (e.g. "videos/uuid.mp4") — uploaded directly from browser to R2
+    // videoUrl: external URL (YouTube embed, Google Drive, etc.)
+    const { title, description, videoKey, videoUrl, durationMin, orderIndex, isFree, subjectId } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required.' });
 
+    let subjectName = null;
+    if (subjectId) {
+      const [cs] = await db.select().from(courseSubjects).where(eq(courseSubjects.id, parseInt(subjectId)));
+      subjectName = cs?.name || null;
+    }
+
     const [chapter] = await db.insert(chapters).values({
-      courseId: parseInt(courseId), title, description, videoUrl,
+      courseId: parseInt(courseId), title,
+      subjectId: subjectId ? parseInt(subjectId) : null,
+      subject: subjectName,
+      description,
+      videoKey: videoKey || null,
+      videoUrl: videoUrl || null,
       durationMin: parseInt(durationMin) || 0,
-      orderIndex: parseInt(orderIndex) || 1, isFree: isFree || false,
+      orderIndex: parseInt(orderIndex) || 1,
+      isFree: isFree || false,
     }).returning();
 
-    // Update chapters_count on course
     await db.execute(sql`UPDATE courses SET chapters_count = (SELECT COUNT(*) FROM chapters WHERE course_id = ${parseInt(courseId)}) WHERE id = ${parseInt(courseId)}`);
-
     return res.status(201).json({ message: 'Chapter created!', chapter });
   } catch (err) {
     return res.status(500).json({ error: 'Server error.' });
@@ -202,12 +605,27 @@ export const adminCreateChapter = async (req, res) => {
 export const adminUpdateChapter = async (req, res) => {
   try {
     const { id } = req.params;
-    // BUG-003: Whitelist only permitted fields
-    const { title, description, videoUrl, durationMin, orderIndex, isFree } = req.body;
+    // videoKey: private R2 key — set when admin uploads to R2; null clears it
+    // videoUrl: external URL — set when admin uses YouTube/Drive link
+    const { title, description, videoKey, videoUrl, durationMin, orderIndex, isFree, subjectId } = req.body;
+
+    let subjectName = undefined;
+    if (subjectId !== undefined) {
+      if (subjectId) {
+        const [cs] = await db.select().from(courseSubjects).where(eq(courseSubjects.id, parseInt(subjectId)));
+        subjectName = cs?.name || null;
+      } else {
+        subjectName = null;
+      }
+    }
+
     const updates = {
       ...(title !== undefined && { title }),
+      ...(subjectId !== undefined && { subjectId: subjectId ? parseInt(subjectId) : null }),
+      ...(subjectName !== undefined && { subject: subjectName }),
       ...(description !== undefined && { description }),
-      ...(videoUrl !== undefined && { videoUrl }),
+      ...(videoKey !== undefined && { videoKey: videoKey || null }),
+      ...(videoUrl !== undefined && { videoUrl: videoUrl || null }),
       ...(durationMin !== undefined && { durationMin: parseInt(durationMin) }),
       ...(orderIndex !== undefined && { orderIndex: parseInt(orderIndex) }),
       ...(isFree !== undefined && { isFree }),
@@ -237,7 +655,24 @@ export const adminDeleteChapter = async (req, res) => {
 // ── TESTS ─────────────────────────────────────────────────────────────────────
 export const adminGetTests = async (req, res) => {
   try {
-    const tests = await db.select().from(mockTests).orderBy(desc(mockTests.createdAt));
+    const { rows } = await db.execute(sql.raw(`
+      SELECT mt.*, cs.name AS subject_name
+      FROM   mock_tests mt
+      LEFT JOIN course_subjects cs ON cs.id = mt.subject_id
+      ORDER  BY mt.created_at DESC
+    `));
+    const tests = rows.map(r => ({
+      ...r,
+      subjectId: r.subject_id,
+      subjectName: r.subject_name ?? r.subject ?? null,
+      totalQuestions: r.total_questions,
+      durationMinutes: r.duration_minutes,
+      isPublished: r.is_published,
+      courseId: r.course_id,
+      createdAt: r.created_at,
+      defaultMarks: r.default_marks ?? 2,
+      defaultNegativeMarks: r.default_negative_marks ?? 0.5,
+    }));
     return res.json({ tests });
   } catch (err) {
     return res.status(500).json({ error: 'Server error.' });
@@ -246,13 +681,27 @@ export const adminGetTests = async (req, res) => {
 
 export const adminCreateTest = async (req, res) => {
   try {
-    const { title, description, courseId, category, durationMinutes, difficulty, isPublished } = req.body;
+    const { title, description, courseId, category, subjectId, durationMinutes, difficulty,
+      isPublished, defaultMarks, defaultNegativeMarks } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required.' });
 
+    let subjectName = null;
+    if (subjectId) {
+      const [cs] = await db.select().from(courseSubjects).where(eq(courseSubjects.id, parseInt(subjectId)));
+      subjectName = cs?.name || null;
+    }
+
     const [test] = await db.insert(mockTests).values({
-      title, description, courseId: courseId ? parseInt(courseId) : null,
-      category, durationMinutes: parseInt(durationMinutes) || 60,
-      difficulty: difficulty || 'medium', isPublished: isPublished || false,
+      title, description,
+      courseId: courseId ? parseInt(courseId) : null,
+      category,
+      subjectId: subjectId ? parseInt(subjectId) : null,
+      subject: subjectName,
+      durationMinutes: parseInt(durationMinutes) || 60,
+      difficulty: difficulty || 'medium',
+      isPublished: isPublished || false,
+      defaultMarks: parseInt(defaultMarks) || 2,
+      defaultNegativeMarks: String(parseFloat(defaultNegativeMarks) || 0.5),
     }).returning();
     return res.status(201).json({ message: 'Test created!', test });
   } catch (err) {
@@ -262,16 +711,31 @@ export const adminCreateTest = async (req, res) => {
 
 export const adminUpdateTest = async (req, res) => {
   try {
-    // BUG-003: Whitelist only permitted fields
-    const { title, description, courseId, category, durationMinutes, difficulty, isPublished } = req.body;
+    const { title, description, courseId, category, subjectId, durationMinutes, difficulty,
+      isPublished, defaultMarks, defaultNegativeMarks } = req.body;
+
+    let subjectName = undefined;
+    if (subjectId !== undefined) {
+      if (subjectId) {
+        const [cs] = await db.select().from(courseSubjects).where(eq(courseSubjects.id, parseInt(subjectId)));
+        subjectName = cs?.name || null;
+      } else {
+        subjectName = null;
+      }
+    }
+
     const updates = {
       ...(title !== undefined && { title }),
       ...(description !== undefined && { description }),
       ...(courseId !== undefined && { courseId: courseId ? parseInt(courseId) : null }),
       ...(category !== undefined && { category }),
+      ...(subjectId !== undefined && { subjectId: subjectId ? parseInt(subjectId) : null }),
+      ...(subjectName !== undefined && { subject: subjectName }),
       ...(durationMinutes !== undefined && { durationMinutes: parseInt(durationMinutes) }),
       ...(difficulty !== undefined && { difficulty }),
       ...(isPublished !== undefined && { isPublished }),
+      ...(defaultMarks !== undefined && { defaultMarks: parseInt(defaultMarks) }),
+      ...(defaultNegativeMarks !== undefined && { defaultNegativeMarks: String(parseFloat(defaultNegativeMarks)) }),
     };
     const [test] = await db.update(mockTests).set(updates)
       .where(eq(mockTests.id, parseInt(req.params.id))).returning();
@@ -402,12 +866,12 @@ export const adminGetEnrollments = async (req, res) => {
     const allEnrollments = await db.select({
       id: enrollments.id,
       enrolledAt: enrollments.enrolledAt,
-      userName: users.name,
-      userEmail: users.email,
+      studentName: students.name,
+      studentUsername: students.username,
       courseTitle: courses.title,
       courseCategory: courses.category,
     }).from(enrollments)
-      .leftJoin(users, eq(enrollments.userId, users.id))
+      .leftJoin(students, eq(enrollments.studentId, students.id))
       .leftJoin(courses, eq(enrollments.courseId, courses.id))
       .orderBy(desc(enrollments.enrolledAt));
     return res.json({ enrollments: allEnrollments });
@@ -425,11 +889,11 @@ export const adminGetPayments = async (req, res) => {
       gateway: payments.gateway,
       paidAt: payments.paidAt,
       createdAt: payments.createdAt,
-      userName: users.name,
-      userEmail: users.email,
+      studentName: students.name,
+      studentUsername: students.username,
       courseTitle: courses.title,
     }).from(payments)
-      .leftJoin(users, eq(payments.userId, users.id))
+      .leftJoin(students, eq(payments.studentId, students.id))
       .leftJoin(courses, eq(payments.courseId, courses.id))
       .orderBy(desc(payments.createdAt));
     return res.json({ payments: allPayments });

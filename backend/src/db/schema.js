@@ -1,18 +1,45 @@
 import { pgTable, serial, varchar, text, integer, boolean, timestamp, decimal, date, unique } from 'drizzle-orm/pg-core';
 
-// ─── USERS ────────────────────────────────────────────────────────────────────
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  email: varchar('email', { length: 255 }).unique().notNull(),
-  phone: varchar('phone', { length: 20 }),
-  passwordHash: varchar('password_hash', { length: 255 }),
-  role: varchar('role', { length: 30 }).default('student').notNull(), // student | content_manager | super_admin
-  googleId: varchar('google_id', { length: 255 }),
-  avatarUrl: text('avatar_url'),
-  isActive: boolean('is_active').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+// ─── STUDENTS ─────────────────────────────────────────────────────────────────
+// Created exclusively by admin. Log into the main website via username + password.
+export const students = pgTable('students', {
+  id:           serial('id').primaryKey(),
+  name:         varchar('name',          { length: 255 }).notNull(),
+  username:     varchar('username',      { length: 100 }).unique().notNull(),
+  passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  phone:        varchar('phone',         { length: 20  }),
+  isActive:     boolean('is_active').default(true).notNull(),
+  // Single-session enforcement: updated on every login, nulled on logout.
+  // Auth middleware compares JWT's sessionToken to this column on every request.
+  sessionToken: varchar('session_token', { length: 128 }),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+  updatedAt:    timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ─── ADMINS ───────────────────────────────────────────────────────────────────
+// Super-admin accounts. Log into the admin panel via email + password.
+export const admins = pgTable('admins', {
+  id:           serial('id').primaryKey(),
+  name:         varchar('name',          { length: 255 }).notNull(),
+  email:        varchar('email',         { length: 255 }).unique().notNull(),
+  passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  isActive:     boolean('is_active').default(true).notNull(),
+  sessionToken: varchar('session_token', { length: 128 }),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+  updatedAt:    timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ─── CONTENT MANAGERS ─────────────────────────────────────────────────────────
+// Content-manager accounts. Log into the admin panel via email + password.
+export const contentManagers = pgTable('content_managers', {
+  id:           serial('id').primaryKey(),
+  name:         varchar('name',          { length: 255 }).notNull(),
+  email:        varchar('email',         { length: 255 }).unique().notNull(),
+  passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  isActive:     boolean('is_active').default(true).notNull(),
+  sessionToken: varchar('session_token', { length: 128 }),
+  createdAt:    timestamp('created_at').defaultNow().notNull(),
+  updatedAt:    timestamp('updated_at').defaultNow().notNull(),
 });
 
 // ─── COURSES ──────────────────────────────────────────────────────────────────
@@ -35,17 +62,35 @@ export const courses = pgTable('courses', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// ─── COURSE SUBJECTS ──────────────────────────────────────────────────────────
+// Single source of truth for subject names per course.
+// Renaming one row here instantly renames it everywhere (chapters + mock tests).
+export const courseSubjects = pgTable('course_subjects', {
+  id:         serial('id').primaryKey(),
+  courseId:   integer('course_id').references(() => courses.id, { onDelete: 'cascade' }).notNull(),
+  name:       varchar('name', { length: 150 }).notNull(),
+  orderIndex: integer('order_index').notNull().default(1),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+});
+
 // ─── CHAPTERS ─────────────────────────────────────────────────────────────────
 export const chapters = pgTable('chapters', {
-  id: serial('id').primaryKey(),
-  courseId: integer('course_id').references(() => courses.id, { onDelete: 'cascade' }).notNull(),
-  title: varchar('title', { length: 500 }).notNull(),
+  id:         serial('id').primaryKey(),
+  courseId:   integer('course_id').references(() => courses.id, { onDelete: 'cascade' }).notNull(),
+  subjectId:  integer('subject_id').references(() => courseSubjects.id, { onDelete: 'set null' }),
+  title:      varchar('title', { length: 500 }).notNull(),
+  subject:    varchar('subject', { length: 150 }),  // legacy — kept during migration
   description: text('description'),
-  videoUrl: text('video_url'),     // External URL (YouTube / S3 / Drive)
+  // R2 key for private video (e.g. "videos/uuid.mp4"). Null if no video yet.
+  // Signed GET URLs are generated by /api/chapters/:id/video endpoint.
+  videoKey:    text('video_key'),
+  // External / YouTube video URL. If set, embedded directly without signing.
+  // Frontend prefers this over videoKey. Both can coexist; videoUrl takes priority.
+  videoUrl:    text('video_url'),
   durationMin: integer('duration_min').default(0),
   orderIndex: integer('order_index').notNull().default(1),
-  isFree: boolean('is_free').default(false),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  isFree:     boolean('is_free').default(false),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
 });
 
 // ─── STUDY MATERIALS ──────────────────────────────────────────────────────────
@@ -54,23 +99,32 @@ export const studyMaterials = pgTable('study_materials', {
   courseId: integer('course_id').references(() => courses.id, { onDelete: 'cascade' }),
   chapterId: integer('chapter_id').references(() => chapters.id, { onDelete: 'cascade' }),
   title: varchar('title', { length: 500 }).notNull(),
-  type: varchar('type', { length: 50 }).default('pdf'), // pdf | notes | pyq | practice
-  fileUrl: text('file_url').notNull(),
+  type: varchar('type', { length: 50 }).default('pdf'), // pdf | video | link | doc
+  // R2 key for private files (e.g. "pdfs/uuid.pdf", "videos/uuid.mp4").
+  // For external links, store the full URL here.
+  // Signed GET URLs generated by /api/materials/:id/stream.
+  fileKey: text('file_key').notNull(),
+  description: text('description'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // ─── MOCK TESTS ───────────────────────────────────────────────────────────────
 export const mockTests = pgTable('mock_tests', {
-  id: serial('id').primaryKey(),
-  courseId: integer('course_id').references(() => courses.id, { onDelete: 'set null' }),
-  title: varchar('title', { length: 500 }).notNull(),
-  description: text('description'),
-  durationMinutes: integer('duration_minutes').default(60).notNull(),
-  totalQuestions: integer('total_questions').default(0),
-  difficulty: varchar('difficulty', { length: 50 }).default('medium'), // easy | medium | hard
-  category: varchar('category', { length: 100 }),
-  isPublished: boolean('is_published').default(false),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  id:                  serial('id').primaryKey(),
+  courseId:            integer('course_id').references(() => courses.id, { onDelete: 'set null' }),
+  subjectId:           integer('subject_id').references(() => courseSubjects.id, { onDelete: 'set null' }),
+  title:               varchar('title', { length: 500 }).notNull(),
+  description:         text('description'),
+  durationMinutes:     integer('duration_minutes').default(60).notNull(),
+  totalQuestions:      integer('total_questions').default(0),
+  difficulty:          varchar('difficulty', { length: 50 }).default('medium'),
+  category:            varchar('category', { length: 100 }),
+  subject:             varchar('subject', { length: 150 }),  // legacy — kept during migration
+  // Test-level defaults — pre-fill question marks when adding questions to this test
+  defaultMarks:        integer('default_marks').default(2).notNull(),
+  defaultNegativeMarks: decimal('default_negative_marks', { precision: 3, scale: 2 }).default('0.5').notNull(),
+  isPublished:         boolean('is_published').default(false),
+  createdAt:           timestamp('created_at').defaultNow().notNull(),
 });
 
 // ─── QUESTIONS ────────────────────────────────────────────────────────────────
@@ -93,7 +147,7 @@ export const questions = pgTable('questions', {
 // ─── PAYMENTS ─────────────────────────────────────────────────────────────────
 export const payments = pgTable('payments', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id).notNull(),
+  studentId: integer('student_id').references(() => students.id).notNull(),
   courseId: integer('course_id').references(() => courses.id).notNull(),
   amount: integer('amount').notNull(),   // in paise
   currency: varchar('currency', { length: 10 }).default('INR'),
@@ -109,19 +163,19 @@ export const payments = pgTable('payments', {
 // ─── ENROLLMENTS ──────────────────────────────────────────────────────────────
 export const enrollments = pgTable('enrollments', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  studentId: integer('student_id').references(() => students.id, { onDelete: 'cascade' }).notNull(),
   courseId: integer('course_id').references(() => courses.id, { onDelete: 'cascade' }).notNull(),
   enrolledAt: timestamp('enrolled_at').defaultNow().notNull(),
   expiresAt: timestamp('expires_at'),   // null = lifetime
   paymentId: integer('payment_id').references(() => payments.id),
 }, (table) => ({
-  unq: unique().on(table.userId, table.courseId),
+  unq: unique().on(table.studentId, table.courseId),
 }));
 
 // ─── TEST ATTEMPTS ────────────────────────────────────────────────────────────
 export const testAttempts = pgTable('test_attempts', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  studentId: integer('student_id').references(() => students.id, { onDelete: 'cascade' }).notNull(),
   testId: integer('test_id').references(() => mockTests.id, { onDelete: 'cascade' }).notNull(),
   score: integer('score').default(0),
   totalMarks: integer('total_marks').default(0),
@@ -142,10 +196,10 @@ export const attemptAnswers = pgTable('attempt_answers', {
   isCorrect: boolean('is_correct'),
 });
 
-// ─── USER STREAKS ─────────────────────────────────────────────────────────────
+// ─── STUDENT STREAKS ──────────────────────────────────────────────────────────
 export const userStreaks = pgTable('user_streaks', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id).unique().notNull(),
+  studentId: integer('student_id').references(() => students.id).unique().notNull(),
   currentStreak: integer('current_streak').default(0),
   longestStreak: integer('longest_streak').default(0),
   lastActive: date('last_active'),
@@ -157,6 +211,6 @@ export const announcements = pgTable('announcements', {
   title: varchar('title', { length: 500 }).notNull(),
   body: text('body'),
   isActive: boolean('is_active').default(true),
-  createdBy: integer('created_by').references(() => users.id),
+  createdBy: integer('created_by').references(() => admins.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

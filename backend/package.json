@@ -5,13 +5,16 @@
   "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
-    "start": "node src/index.js",
+    "dev": "node scripts/kill-port.cjs && cross-env NODE_ENV=development nodemon src/index.js",
+    "start": "cross-env NODE_ENV=production node src/index.js",
     "db:push": "drizzle-kit push",
     "db:seed": "node src/db/seed.js",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.616.0",
+    "@aws-sdk/s3-request-presigner": "^3.616.0",
+    "@sentry/node": "^8.26.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -21,10 +24,13 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.5",
+    "pino": "^9.3.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "drizzle-kit": "^0.21.4",
-    "nodemon": "^3.1.4"
+    "nodemon": "^3.1.4",
+    "pino-pretty": "^11.2.2"
   }
 }

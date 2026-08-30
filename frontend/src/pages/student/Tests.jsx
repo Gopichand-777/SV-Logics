@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Clock, Target, ChevronRight } from 'lucide-react';
 import { testsApi } from '../../api/tests.api.js';
-import { useLang } from '../../context/LanguageContext.jsx';
+
 
 const CATEGORIES = ['All', 'SSC CGL', 'SSC MTS', 'SSC CHSL', 'Banking (IBPS/SBI)'];
 const DIFF_COLOR = { easy: '#16a34a', medium: '#d97706', hard: '#dc2626' };
 
 export default function Tests() {
-  const { t } = useLang();
+
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -29,8 +29,8 @@ export default function Tests() {
       {/* Banner */}
       <div style={{ background: 'linear-gradient(135deg, #0f1f3d 0%, #1d3a8a 100%)', padding: '48px 0 72px' }}>
         <div className="container">
-          <h1 className="heading-lg" style={{ color: 'white', marginBottom: 8 }}>{t('tests.title')}</h1>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.05rem' }}>{t('tests.subtitle')}</p>
+          <h1 className="heading-lg" style={{ color: 'white', marginBottom: 8 }}>Mock Tests</h1>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.05rem' }}>Practice with our comprehensive test series</p>
         </div>
       </div>
 
@@ -68,14 +68,14 @@ export default function Tests() {
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 16, lineHeight: 1.4 }}>{test.title}</h3>
                 <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-                    <Target size={14} /> {test.totalQuestions} {t('tests.questions')}
+                    <Target size={14} /> {test.totalQuestions} Questions
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-                    <Clock size={14} /> {test.durationMinutes} {t('tests.minutes')}
+                    <Clock size={14} /> {test.durationMinutes} Minutes
                   </span>
                 </div>
                 <Link to={`/tests/${test.id}/session`} className="btn btn-primary btn-full">
-                  {t('tests.start')} <ChevronRight size={16} />
+                  Start Test <ChevronRight size={16} />
                 </Link>
               </div>
             ))}

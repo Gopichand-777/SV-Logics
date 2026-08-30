@@ -6,7 +6,8 @@ import AdminDashboard from './pages/Dashboard.jsx';
 import AdminCourses from './pages/Courses.jsx';
 import AdminTests from './pages/Tests.jsx';
 import AdminQuestions from './pages/Questions.jsx';
-import AdminUsers from './pages/Users.jsx';
+import AdminStudents from './pages/Users.jsx';
+import AdminStaff from './pages/Staff.jsx';
 import AdminEnrollments from './pages/Enrollments.jsx';
 import AdminPayments from './pages/Payments.jsx';
 import AdminAnnouncements from './pages/Announcements.jsx';
@@ -45,7 +46,8 @@ export default function App() {
       <Route path="/questions" element={<ProtectedRoute><AdminLayout><AdminQuestions /></AdminLayout></ProtectedRoute>} />
       <Route path="/materials" element={<ProtectedRoute><AdminLayout><AdminMaterials /></AdminLayout></ProtectedRoute>} />
       <Route path="/announcements" element={<ProtectedRoute><AdminLayout><AdminAnnouncements /></AdminLayout></ProtectedRoute>} />
-      <Route path="/users" element={<ProtectedRoute superOnly><AdminLayout><AdminUsers /></AdminLayout></ProtectedRoute>} />
+      <Route path="/users" element={<ProtectedRoute superOnly><AdminLayout><AdminStudents /></AdminLayout></ProtectedRoute>} />
+      <Route path="/staff" element={<ProtectedRoute superOnly><AdminLayout><AdminStaff /></AdminLayout></ProtectedRoute>} />
       <Route path="/enrollments" element={<ProtectedRoute superOnly><AdminLayout><AdminEnrollments /></AdminLayout></ProtectedRoute>} />
       <Route path="/payments" element={<ProtectedRoute superOnly><AdminLayout><AdminPayments /></AdminLayout></ProtectedRoute>} />
 

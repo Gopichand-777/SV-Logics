@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, AlertCircle, X } from 'lucide-react';
 import { testsApi } from '../../api/tests.api.js';
-import { useLang } from '../../context/LanguageContext.jsx';
+
 
 export default function TestSession() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useLang();
+
   const [test, setTest] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});        // { questionId: 'a'|'b'|'c'|'d' }
@@ -97,7 +97,7 @@ export default function TestSession() {
             </div>
             <button onClick={() => setShowConfirm(true)} className="btn btn-sm" disabled={submitting}
               style={{ background: submitting ? '#6b7280' : '#ef4444', color: 'white', borderColor: 'transparent' }}>
-              {submitting ? 'Submitting...' : t('tests.submit')}
+              {submitting ? 'Submitting...' : 'Submit Test'}
             </button>
           </div>
         </div>
@@ -152,7 +152,7 @@ export default function TestSession() {
               </span>
               {currentQ < questions.length - 1
                 ? <button onClick={() => setCurrentQ(q => q + 1)} className="btn btn-primary">Next →</button>
-                : <button onClick={() => handleSubmit(false)} className="btn btn-primary" disabled={submitting}>{t('tests.submit')}</button>
+                : <button onClick={() => handleSubmit(false)} className="btn btn-primary" disabled={submitting}>Submit Test</button>
               }
             </div>
           </div>
@@ -200,7 +200,7 @@ export default function TestSession() {
               <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
                 You have <strong style={{ color: 'var(--color-text)' }}>
                   {questions.length - Object.keys(answers).length}
-                </strong> {t('tests.unanswered')}. Are you sure you want to submit?
+                </strong> unanswered questions. Are you sure you want to submit?
               </p>
             </div>
             <div style={{ display: 'flex', gap: 12 }}>

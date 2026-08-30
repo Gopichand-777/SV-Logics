@@ -6,7 +6,6 @@ import Home from './pages/public/Home.jsx';
 import Courses from './pages/public/Courses.jsx';
 import CourseDetail from './pages/public/CourseDetail.jsx';
 import Login from './pages/public/Login.jsx';
-import Register from './pages/public/Register.jsx';
 import Dashboard from './pages/student/Dashboard.jsx';
 import Tests from './pages/student/Tests.jsx';
 import TestSession from './pages/student/TestSession.jsx';
@@ -41,9 +40,9 @@ export default function App() {
       <Route path="/courses" element={<PageLayout><Courses /></PageLayout>} />
       <Route path="/courses/:id" element={<PageLayout><CourseDetail /></PageLayout>} />
 
-      {/* Auth (guest only) */}
+      {/* Auth (login only — registration disabled, admin creates accounts) */}
       <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
-      <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
+      <Route path="/register" element={<Navigate to="/login" replace />} />
 
       {/* Protected */}
       <Route path="/dashboard" element={<ProtectedRoute><PageLayout><Dashboard /></PageLayout></ProtectedRoute>} />

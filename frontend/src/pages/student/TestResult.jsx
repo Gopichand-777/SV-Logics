@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle, MinusCircle, LayoutDashboard, RefreshCw } from 'lucide-react';
 import { testsApi } from '../../api/tests.api.js';
-import { useLang } from '../../context/LanguageContext.jsx';
+
 
 const OPT_LABELS = { a: 'A', b: 'B', c: 'C', d: 'D' };
 const OPT_TEXT = (ans, o) => ({ a: ans.optionA, b: ans.optionB, c: ans.optionC, d: ans.optionD }[o]);
@@ -26,7 +26,7 @@ function ScoreRing({ percentage }) {
 
 export default function TestResult() {
   const { attemptId } = useParams();
-  const { t } = useLang();
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showReview, setShowReview] = useState(false);
@@ -52,7 +52,7 @@ export default function TestResult() {
       <div className="container" style={{ maxWidth: 860 }}>
         {/* Score Card */}
         <div className="card" style={{ padding: 40, textAlign: 'center', marginBottom: 28 }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 4 }}>{t('tests.result')}</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 4 }}>Your Score</h2>
           <p style={{ color: 'var(--color-text-muted)', marginBottom: 32, fontSize: '0.9rem' }}>
             {data?.attempt?.testTitle || 'Mock Test'}
           </p>
@@ -69,9 +69,9 @@ export default function TestResult() {
           {/* Stats Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32 }}>
             {[
-              { icon: <CheckCircle size={22} color="var(--color-success)" />, val: attempt.correctCount, label: t('tests.correct'), bg: 'rgba(16,185,129,0.08)' },
-              { icon: <XCircle size={22} color="var(--color-error)" />, val: attempt.wrongCount, label: t('tests.wrong'), bg: 'rgba(239,68,68,0.08)' },
-              { icon: <MinusCircle size={22} color="var(--color-text-muted)" />, val: attempt.unattempted, label: t('tests.skipped'), bg: 'rgba(107,114,128,0.08)' },
+              { icon: <CheckCircle size={22} color="var(--color-success)" />, val: attempt.correctCount, label: 'Correct', bg: 'rgba(16,185,129,0.08)' },
+              { icon: <XCircle size={22} color="var(--color-error)" />, val: attempt.wrongCount, label: 'Wrong', bg: 'rgba(239,68,68,0.08)' },
+              { icon: <MinusCircle size={22} color="var(--color-text-muted)" />, val: attempt.unattempted, label: 'Skipped', bg: 'rgba(107,114,128,0.08)' },
             ].map((s, i) => (
               <div key={i} style={{ padding: '20px 16px', background: s.bg, borderRadius: 'var(--radius-md)' }}>
                 <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}>{s.icon}</div>
@@ -83,10 +83,10 @@ export default function TestResult() {
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => setShowReview(r => !r)} className="btn btn-outline">
-              <RefreshCw size={16} /> {showReview ? 'Hide Review' : t('tests.viewReview')}
+              <RefreshCw size={16} /> {showReview ? 'Hide Review' : 'View Answer Review'}
             </button>
             <Link to="/dashboard" className="btn btn-primary">
-              <LayoutDashboard size={16} /> {t('tests.backToDash')}
+              <LayoutDashboard size={16} /> Back to Dashboard
             </Link>
             <Link to="/tests" className="btn btn-outline">More Tests</Link>
           </div>

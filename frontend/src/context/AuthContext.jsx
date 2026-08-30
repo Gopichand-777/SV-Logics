@@ -24,16 +24,30 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
   };
 
-  const logout = () => {
+  // Calls backend to clear sessionToken in DB — JWT is immediately dead on all devices
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Proceed with local cleanup even if backend call fails
+    } finally {
+      localStorage.removeItem('svlogics-token');
+      setUser(null);
+    }
+  };
+
+  // Called by axios interceptor when SESSION_INVALIDATED received
+  const forceLogout = (message) => {
     localStorage.removeItem('svlogics-token');
     setUser(null);
+    if (message) alert(`⚠️ ${message}`);
   };
 
   const isAdmin = user?.role === 'super_admin' || user?.role === 'content_manager';
   const isSuperAdmin = user?.role === 'super_admin';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isSuperAdmin, isLoggedIn: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, forceLogout, isAdmin, isSuperAdmin, isLoggedIn: !!user }}>
       {children}
     </AuthContext.Provider>
   );

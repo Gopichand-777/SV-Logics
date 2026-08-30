@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, BookOpen, User, Mail, Phone, Lock } from 'lucide-react';
 import { authApi } from '../../api/auth.api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { useLang } from '../../context/LanguageContext.jsx';
+
 
 export default function Register() {
-  const { t } = useLang();
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
@@ -43,13 +43,13 @@ export default function Register() {
         </div>
         <div>
           <h2 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 700, marginBottom: 12 }}>
-            {t('auth.joinStudents')}
+            Join 50,000+ students already preparing with SV Logics
           </h2>
           <p style={{ color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, fontSize: '0.95rem' }}>
             Start your preparation today with expert faculty, comprehensive mock tests, and proven study strategies.
           </p>
         </div>
-        <p className="auth-trusted">{t('auth.trusted')}</p>
+        <p className="auth-trusted">Trusted by 50,000+ students across India</p>
       </div>
 
       {/* Right Panel */}
@@ -58,8 +58,8 @@ export default function Register() {
           <div style={{ marginBottom: 8 }}>
             <Link to="/" style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>← Home</Link>
           </div>
-          <h1>{t('auth.createAccount')}</h1>
-          <p className="subtitle">{t('auth.registerSubtitle')}</p>
+          <h1>Create your account</h1>
+          <p className="subtitle">It's free. No credit card required.</p>
 
           {/* Google Button */}
           <button
@@ -81,12 +81,12 @@ export default function Register() {
               <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
               <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
             </svg>
-            {t('auth.googleLogin')}
+            Continue with Google
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
-            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{t('auth.orDivider')}</span>
+            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>or</span>
             <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
           </div>
 
@@ -98,25 +98,25 @@ export default function Register() {
             )}
 
             <div className="form-group">
-              <label className="form-label" htmlFor="name"><User size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />{t('auth.fullName')}</label>
+              <label className="form-label" htmlFor="name"><User size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Full Name</label>
               <input id="name" name="name" type="text" className="form-input" value={form.name} onChange={handleChange} placeholder="Your full name" required autoFocus />
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="email"><Mail size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />{t('auth.email')}</label>
+              <label className="form-label" htmlFor="email"><Mail size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Email Address</label>
               <input id="email" name="email" type="email" className="form-input" value={form.email} onChange={handleChange} placeholder="you@example.com" required />
             </div>
 
             <div className="form-group">
               <label className="form-label" htmlFor="phone">
                 <Phone size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                {t('auth.phone')} <span className="optional">({t('auth.optional')})</span>
+                Phone Number <span className="optional">(optional)</span>
               </label>
               <input id="phone" name="phone" type="tel" className="form-input" value={form.phone} onChange={handleChange} placeholder="+91 98765 43210" />
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="password"><Lock size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />{t('auth.password')}</label>
+              <label className="form-label" htmlFor="password"><Lock size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Password</label>
               <div className="form-input-wrap">
                 <input id="password" name="password" type={showPwd ? 'text' : 'password'} className="form-input" value={form.password} onChange={handleChange} placeholder="Min. 6 characters" required />
                 <button type="button" className="form-input-icon" onClick={() => setShowPwd(s => !s)}>
@@ -128,20 +128,20 @@ export default function Register() {
             <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading}>
               {loading ? (
                 <><div style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> Creating account...</>
-              ) : t('auth.registerBtn')}
+              ) : 'Create Account'}
             </button>
 
             <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-              {t('auth.agreeTo')}{' '}
-              <a href="#" style={{ color: 'var(--color-primary)' }}>{t('auth.terms')}</a>
-              {' '}{t('auth.and')}{' '}
-              <a href="#" style={{ color: 'var(--color-primary)' }}>{t('auth.privacy')}</a>
+              By signing up, you agree to our{' '}
+              <a href="#" style={{ color: 'var(--color-primary)' }}>Terms of Service</a>
+              {' '}and{' '}
+              <a href="#" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>
             </p>
           </form>
 
           <p style={{ textAlign: 'center', marginTop: 20, fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
-            {t('auth.haveAccount')}{' '}
-            <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{t('nav.login')}</Link>
+            Already have an account?{' '}
+            <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Log In</Link>
           </p>
         </div>
       </div>

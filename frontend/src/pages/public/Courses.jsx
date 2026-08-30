@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { useLang } from '../../context/LanguageContext.jsx';
+
 import { coursesApi } from '../../api/courses.api.js';
 import CourseCard from '../../components/ui/CourseCard.jsx';
 import { useSearchParams } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { useSearchParams } from 'react-router-dom';
 const CATEGORIES = ['All Courses', 'SSC CGL', 'SSC MTS', 'SSC CHSL', 'Banking (IBPS/SBI)'];
 
 export default function Courses() {
-  const { t } = useLang();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +60,7 @@ export default function Courses() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={`${t('common.search')} courses...`}
+              placeholder="Search courses..."
               aria-label="Search courses"
             />
           </form>
