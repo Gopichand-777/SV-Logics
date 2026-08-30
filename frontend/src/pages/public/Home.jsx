@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Users, Video, Award, ChevronRight, Star, Zap, Target, Clock, Shield, TrendingUp, ArrowRight } from 'lucide-react';
-import { useLang } from '../../context/LanguageContext.jsx';
+import { BookOpen, Users, Video, Award, ChevronRight, Zap, Target, Clock, Shield, TrendingUp, ArrowRight, Bell, X } from 'lucide-react';
+
 import { coursesApi } from '../../api/courses.api.js';
 import CourseCard from '../../components/ui/CourseCard.jsx';
 
@@ -24,7 +24,6 @@ const ADVANTAGES = [
   { icon: <Shield size={24} />, title: 'Previous Year Papers', desc: 'Comprehensive PYQ analysis with detailed solutions and trend analysis for all exams.' },
   { icon: <TrendingUp size={24} />, title: 'Performance Analytics', desc: 'Track your progress, identify weak areas, and improve systematically with data-driven insights.' },
   { icon: <Clock size={24} />, title: 'Learn at Your Pace', desc: 'Lifetime access to all enrolled courses. Study whenever, wherever on any device.' },
-  { icon: <Star size={24} />, title: 'Bilingual Content', desc: 'All content available in English and Telugu — learn in the language you are most comfortable with.' },
 ];
 
 const STATS = [
@@ -35,20 +34,95 @@ const STATS = [
 ];
 
 export default function Home() {
-  const { t } = useLang();
+
   const [featuredCourses, setFeaturedCourses] = useState([]);
-  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [coursesLoading, setCoursesLoading]   = useState(true);
+
+  // Announcements banner
+  const [announcements, setAnnouncements]       = useState([]);
+  const [currentAnnIdx, setCurrentAnnIdx]       = useState(0);
+  const [dismissedIds, setDismissedIds]         = useState(
+    () => JSON.parse(localStorage.getItem('sv-dismissed-announcements') || '[]')
+  );
 
   useEffect(() => {
     coursesApi.getAll({ featured: 'true' })
       .then(res => setFeaturedCourses(res.data.courses.slice(0, 3)))
       .catch(() => {})
       .finally(() => setCoursesLoading(false));
+
+    coursesApi.getAnnouncements()
+      .then(res => setAnnouncements(res.data.announcements || []))
+      .catch(() => {});
   }, []);
+
+  const visibleAnn = announcements.filter(a => !dismissedIds.includes(a.id));
+
+  const dismissAnnouncement = (id) => {
+    const next = [...dismissedIds, id];
+    setDismissedIds(next);
+    localStorage.setItem('sv-dismissed-announcements', JSON.stringify(next));
+    // Move to next visible banner
+    setCurrentAnnIdx(i => Math.max(0, i - 1));
+  };
+
+  const activeAnn = visibleAnn[currentAnnIdx] || visibleAnn[0] || null;
 
   return (
     <div>
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      {/* ── Announcements Banner ──────────────────────────────────────── */}
+      {activeAnn && (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 999,
+          background: 'linear-gradient(90deg, #1d3a8a 0%, #2563eb 50%, #1d3a8a 100%)',
+          color: '#fff', padding: '10px 20px',
+          display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
+        }}>
+          {/* Bell icon */}
+          <Bell size={16} style={{ flexShrink: 0, opacity: 0.9 }} />
+
+          {/* Text */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontWeight: 700, marginRight: 8 }}>{activeAnn.title}</span>
+            {activeAnn.body && (
+              <span style={{ opacity: 0.88, fontSize: '0.875rem' }}>{activeAnn.body}</span>
+            )}
+          </div>
+
+          {/* Navigation (if multiple banners) */}
+          {visibleAnn.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, fontSize: '0.78rem', opacity: 0.8 }}>
+              <button
+                onClick={() => setCurrentAnnIdx(i => Math.max(0, i - 1))}
+                disabled={currentAnnIdx === 0}
+                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '2px 6px', opacity: currentAnnIdx === 0 ? 0.4 : 1 }}
+              >&#8592;</button>
+              <span>{currentAnnIdx + 1} / {visibleAnn.length}</span>
+              <button
+                onClick={() => setCurrentAnnIdx(i => Math.min(visibleAnn.length - 1, i + 1))}
+                disabled={currentAnnIdx === visibleAnn.length - 1}
+                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '2px 6px', opacity: currentAnnIdx === visibleAnn.length - 1 ? 0.4 : 1 }}
+              >&#8594;</button>
+            </div>
+          )}
+
+          {/* Dismiss */}
+          <button
+            onClick={() => dismissAnnouncement(activeAnn.id)}
+            style={{
+              background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
+              color: '#fff', cursor: 'pointer', padding: '4px', display: 'flex',
+              alignItems: 'center', flexShrink: 0,
+            }}
+            title="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Hero ─────────────────────────────────────────── */}
       <section className="hero">
         <div className="hero-bg-image" />
         <div className="hero-particles">
@@ -60,19 +134,19 @@ export default function Home() {
           <div className="hero-content">
             <div className="hero-badge">
               <Zap size={14} />
-              {t('hero.badge')}
+              India's Most Trusted Prep Platform
             </div>
             <h1 className="heading-xl hero-title">
-              {t('hero.title1')} {t('hero.title2')}<br />
-              <span className="highlight">{t('hero.highlight')}</span>
+              Crack SSC & Banking Exams with<br />
+              <span className="highlight">Certainty</span>
             </h1>
-            <p className="hero-subtitle">{t('hero.subtitle')}</p>
+            <p className="hero-subtitle">Expert-led courses, rigorous mock tests, and comprehensive study material designed for ambitious students targeting top government jobs.</p>
             <div className="hero-actions">
               <Link to="/courses" className="btn btn-accent btn-lg">
-                {t('hero.cta1')} <ArrowRight size={18} />
+                Explore Courses <ArrowRight size={18} />
               </Link>
               <Link to="/register" className="btn btn-ghost btn-lg">
-                {t('hero.cta2')}
+                Start Free Trial
               </Link>
             </div>
           </div>
@@ -98,8 +172,8 @@ export default function Home() {
       <section className="section" style={{ background: 'var(--color-bg)' }}>
         <div className="container">
           <div className="section-header">
-            <h2 className="heading-lg">{t('home.examTitle')}</h2>
-            <p>{t('home.examSubtitle')}</p>
+            <h2 className="heading-lg">Choose Your Target Exam</h2>
+             <p>Specialized batches tailored exactly to the latest syllabus and patterns.</p>
           </div>
           <div className="grid-2">
             {EXAM_CATEGORIES.map((exam) => (
@@ -111,7 +185,7 @@ export default function Home() {
                     <div className="exam-card-title">{exam.title}</div>
                     <div className="exam-card-subtitle">{exam.sub}</div>
                     <span className="exam-card-link">
-                      {t('home.viewCourses')} <ChevronRight size={14} />
+                      View Courses <ChevronRight size={14} />
                     </span>
                   </div>
                 </div>
@@ -126,11 +200,11 @@ export default function Home() {
         <div className="container">
           <div className="flex-between" style={{ marginBottom: 40 }}>
             <div>
-              <h2 className="heading-lg" style={{ marginBottom: 8 }}>{t('home.trendingTitle')}</h2>
-              <p className="text-muted">{t('home.trendingSubtitle')}</p>
+              <h2 className="heading-lg" style={{ marginBottom: 8 }}>Trending Courses</h2>
+               <p className="text-muted">Join our most popular batches right now.</p>
             </div>
             <Link to="/courses" className="btn btn-outline" style={{ whiteSpace: 'nowrap' }}>
-              {t('home.viewAll')} <ChevronRight size={16} />
+              View All <ChevronRight size={16} />
             </Link>
           </div>
           {coursesLoading ? (
@@ -158,8 +232,8 @@ export default function Home() {
       <section className="section">
         <div className="container">
           <div className="section-header">
-            <h2 className="heading-lg">{t('home.advantageTitle')}</h2>
-            <p>{t('home.advantageSubtitle')}</p>
+            <h2 className="heading-lg">The SV Logics Advantage</h2>
+             <p>Everything you need to crack government exams in one place.</p>
           </div>
           <div className="advantage-grid">
             {ADVANTAGES.map((adv, i) => (

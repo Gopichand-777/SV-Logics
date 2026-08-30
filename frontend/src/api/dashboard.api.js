@@ -7,4 +7,5 @@ export const paymentApi = {
   verify: (paymentId) => api.post('/payments/verify', { paymentId }),
   getHistory: () => api.get('/payments/history'),
   getEnrollments: () => api.get('/payments/enrollments'),
+  checkEnrollment: (courseId) => api.get(`/payments/check/${courseId}`),
 };

@@ -3,14 +3,14 @@ import { Link } from 'react-router-dom';
 import { BookOpen, FileText, Flame, TrendingUp, Clock, ChevronRight, Award } from 'lucide-react';
 import { dashboardApi } from '../../api/dashboard.api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { useLang } from '../../context/LanguageContext.jsx';
+
 
 const formatDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 const secToMin = (s) => `${Math.floor(s / 60)}m ${s % 60}s`;
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { t } = useLang();
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,10 +26,10 @@ export default function Dashboard() {
   const enrolledCourses = data?.enrolledCourses || [];
 
   const STAT_CARDS = [
-    { icon: <BookOpen size={22} />, value: stats.enrolledCourses ?? '—', label: t('dashboard.enrolled'), color: '#1d3a8a', bg: 'rgba(29,58,138,0.1)' },
-    { icon: <FileText size={22} />, value: stats.testsAttempted ?? '—', label: t('dashboard.testsAttempted'), color: '#0891b2', bg: 'rgba(8,145,178,0.1)' },
-    { icon: <Flame size={22} />, value: stats.currentStreak ?? '—', label: t('dashboard.streak'), color: '#ea580c', bg: 'rgba(234,88,12,0.1)' },
-    { icon: <TrendingUp size={22} />, value: stats.avgScore ? `${stats.avgScore}%` : '—', label: t('dashboard.avgScore'), color: '#16a34a', bg: 'rgba(22,163,74,0.1)' },
+    { icon: <BookOpen size={22} />, value: stats.enrolledCourses ?? '—', label: 'Enrolled Courses', color: '#1d3a8a', bg: 'rgba(29,58,138,0.1)' },
+    { icon: <FileText size={22} />, value: stats.testsAttempted ?? '—', label: 'Tests Attempted', color: '#0891b2', bg: 'rgba(8,145,178,0.1)' },
+    { icon: <Flame size={22} />, value: stats.currentStreak ?? '—', label: 'Day Streak', color: '#ea580c', bg: 'rgba(234,88,12,0.1)' },
+    { icon: <TrendingUp size={22} />, value: stats.avgScore ? `${stats.avgScore}%` : '—', label: 'Avg Score', color: '#16a34a', bg: 'rgba(22,163,74,0.1)' },
   ];
 
   return (
@@ -64,7 +64,7 @@ export default function Dashboard() {
           {/* Recent Tests */}
           <div className="card" style={{ padding: 24 }}>
             <div className="flex-between" style={{ marginBottom: 20 }}>
-              <h3 style={{ fontWeight: 700 }}>{t('dashboard.recentActivity')}</h3>
+              <h3 style={{ fontWeight: 700 }}>Recent Test Activity</h3>
               <Link to="/tests" style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 600 }}>
                 View All <ChevronRight size={14} style={{ verticalAlign: 'middle' }} />
               </Link>
@@ -76,7 +76,7 @@ export default function Dashboard() {
             ) : recentAttempts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
                 <FileText size={36} color="var(--color-text-light)" style={{ margin: '0 auto 12px' }} />
-                <p className="text-muted">{t('dashboard.noTests')}</p>
+                <p className="text-muted">No tests attempted yet.</p>
                 <Link to="/tests" className="btn btn-primary btn-sm" style={{ marginTop: 12 }}>
                   Take a Test
                 </Link>
@@ -122,9 +122,9 @@ export default function Dashboard() {
           {/* Enrolled Courses */}
           <div className="card" style={{ padding: 24 }}>
             <div className="flex-between" style={{ marginBottom: 20 }}>
-              <h3 style={{ fontWeight: 700 }}>{t('dashboard.enrolledCourses')}</h3>
+              <h3 style={{ fontWeight: 700 }}>My Courses</h3>
               <Link to="/courses" style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-                {t('dashboard.exploreCourses')} <ChevronRight size={14} style={{ verticalAlign: 'middle' }} />
+                Explore Courses <ChevronRight size={14} style={{ verticalAlign: 'middle' }} />
               </Link>
             </div>
             {loading ? (
@@ -134,9 +134,9 @@ export default function Dashboard() {
             ) : enrolledCourses.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px 0' }}>
                 <BookOpen size={36} color="var(--color-text-light)" style={{ margin: '0 auto 12px' }} />
-                <p className="text-muted">{t('dashboard.noCourses')}</p>
+                <p className="text-muted">No courses enrolled yet.</p>
                 <Link to="/courses" className="btn btn-primary btn-sm" style={{ marginTop: 12 }}>
-                  {t('dashboard.exploreCourses')}
+                  Explore Courses
                 </Link>
               </div>
             ) : (

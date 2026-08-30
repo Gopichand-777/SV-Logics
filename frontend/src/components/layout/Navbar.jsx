@@ -3,12 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Sun, Moon, Menu, X, User, LogOut, LayoutDashboard, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
-import { useLang } from '../../context/LanguageContext.jsx';
+
 
 export default function Navbar() {
   const { user, logout, isLoggedIn } = useAuth();
   const { theme, toggleTheme, isDark } = useTheme();
-  const { t, lang, toggleLang } = useLang();
+
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -30,16 +30,12 @@ export default function Navbar() {
 
         {/* Desktop Links */}
         <div className="nav-links">
-          <Link to="/courses" className="nav-link">{t('nav.courses')}</Link>
-          {isLoggedIn && <Link to="/tests" className="nav-link">{t('nav.tests')}</Link>}
+          <Link to="/courses" className="nav-link">Courses</Link>
+          {isLoggedIn && <Link to="/tests" className="nav-link">Mock Tests</Link>}
         </div>
 
         {/* Actions */}
         <div className="nav-actions" style={{ gap: '10px' }}>
-          {/* Lang Toggle */}
-          <button className="lang-toggle" onClick={toggleLang} title="Switch language">
-            {lang === 'en' ? 'తె' : 'EN'}
-          </button>
 
           {/* Theme Toggle */}
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
@@ -65,27 +61,27 @@ export default function Navbar() {
                 }}>
                   <Link to="/dashboard" className="dropdown-item" onClick={() => setUserMenuOpen(false)}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', color: 'var(--color-text)', fontSize: '0.9rem', borderBottom: '1px solid var(--color-border)' }}>
-                    <LayoutDashboard size={16} />{t('nav.dashboard')}
+                    <LayoutDashboard size={16} />Dashboard
                   </Link>
                   <Link to="/tests" className="dropdown-item" onClick={() => setUserMenuOpen(false)}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', color: 'var(--color-text)', fontSize: '0.9rem', borderBottom: '1px solid var(--color-border)' }}>
-                    <FileText size={16} />{t('nav.tests')}
+                     <FileText size={16} />Mock Tests
                   </Link>
                   <Link to="/profile" className="dropdown-item" onClick={() => setUserMenuOpen(false)}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', color: 'var(--color-text)', fontSize: '0.9rem', borderBottom: '1px solid var(--color-border)' }}>
-                    <User size={16} />{t('nav.profile')}
+                     <User size={16} />Profile
                   </Link>
                   <button onClick={handleLogout}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', color: 'var(--color-error)', fontSize: '0.9rem', background: 'none', border: 'none', width: '100%', cursor: 'pointer', fontFamily: 'var(--font)' }}>
-                    <LogOut size={16} />{t('nav.logout')}
+                    <LogOut size={16} />Logout
                   </button>
                 </div>
               )}
             </div>
           ) : (
             <>
-              <Link to="/login" className="nav-link" style={{ fontWeight: 600 }}>{t('nav.login')}</Link>
-              <Link to="/register" className="btn btn-primary btn-sm">{t('nav.signup')}</Link>
+              <Link to="/login" className="nav-link" style={{ fontWeight: 600 }}>Log In</Link>
+              <Link to="/register" className="btn btn-primary btn-sm">Sign Up</Link>
             </>
           )}
 
@@ -99,28 +95,28 @@ export default function Navbar() {
       {/* Mobile Menu */}
       <div className={`mobile-menu ${mobileOpen ? 'open' : ''}`}>
         <Link to="/courses" className="nav-link" onClick={() => setMobileOpen(false)} style={{ padding: '12px 8px', borderBottom: '1px solid var(--color-border)' }}>
-          {t('nav.courses')}
+          Courses
         </Link>
         {isLoggedIn && (
           <>
             <Link to="/dashboard" className="nav-link" onClick={() => setMobileOpen(false)} style={{ padding: '12px 8px', borderBottom: '1px solid var(--color-border)' }}>
-              {t('nav.dashboard')}
+              Dashboard
             </Link>
             <Link to="/tests" className="nav-link" onClick={() => setMobileOpen(false)} style={{ padding: '12px 8px', borderBottom: '1px solid var(--color-border)' }}>
-              {t('nav.tests')}
+              Mock Tests
             </Link>
             <Link to="/profile" className="nav-link" onClick={() => setMobileOpen(false)} style={{ padding: '12px 8px', borderBottom: '1px solid var(--color-border)' }}>
-              {t('nav.profile')}
+              Profile
             </Link>
             <button onClick={handleLogout} style={{ padding: '12px 8px', color: 'var(--color-error)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: '0.95rem', textAlign: 'left' }}>
-              {t('nav.logout')}
+              Logout
             </button>
           </>
         )}
         {!isLoggedIn && (
           <div style={{ display: 'flex', gap: 12, paddingTop: 8 }}>
-            <Link to="/login" className="btn btn-outline btn-full" onClick={() => setMobileOpen(false)}>{t('nav.login')}</Link>
-            <Link to="/register" className="btn btn-primary btn-full" onClick={() => setMobileOpen(false)}>{t('nav.signup')}</Link>
+            <Link to="/login" className="btn btn-outline btn-full" onClick={() => setMobileOpen(false)}>Log In</Link>
+            <Link to="/register" className="btn btn-primary btn-full" onClick={() => setMobileOpen(false)}>Sign Up</Link>
           </div>
         )}
       </div>

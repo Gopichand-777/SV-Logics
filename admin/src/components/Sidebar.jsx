@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, GraduationCap, FileText,
-  HelpCircle, CreditCard, ClipboardList, LogOut, Sun, Moon, Megaphone, BookOpen
+  HelpCircle, CreditCard, ClipboardList, LogOut, Sun, Moon, Megaphone, BookOpen, Shield
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
@@ -25,7 +25,8 @@ const NAV_SECTIONS = [
   {
     label: 'Students',
     links: [
-      { to: '/users', icon: <Users size={17} />, label: 'Users', superOnly: true },
+      { to: '/users', icon: <Users size={17} />, label: 'Students', superOnly: true },
+      { to: '/staff', icon: <Shield size={17} />, label: 'Admin Staff', superOnly: true },
       { to: '/enrollments', icon: <ClipboardList size={17} />, label: 'Enrollments', superOnly: true },
       { to: '/payments', icon: <CreditCard size={17} />, label: 'Payments', superOnly: true },
     ],

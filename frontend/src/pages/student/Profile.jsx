@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { User, Mail, Phone, Lock, Save, Camera } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { authApi } from '../../api/auth.api.js';
-import { useLang } from '../../context/LanguageContext.jsx';
+
 
 export default function Profile() {
   const { user, login } = useAuth();
-  const { t } = useLang();
+
   const [profile, setProfile] = useState({ name: '', phone: '', avatarUrl: '' });
   const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '' });
   const [profileMsg, setProfileMsg] = useState({ text: '', type: '' });
@@ -69,7 +69,7 @@ export default function Profile() {
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '80vh', padding: '40px 0' }}>
       <div className="container" style={{ maxWidth: 720 }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 28 }}>{t('profile.title')}</h1>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 28 }}>My Profile</h1>
 
         {/* Avatar */}
         <div className="card" style={{ padding: 28, marginBottom: 24 }}>
@@ -92,7 +92,7 @@ export default function Profile() {
           </div>
 
           {/* Profile Form */}
-          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>{t('profile.editProfile')}</h3>
+          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>Edit Profile</h3>
           <form onSubmit={handleProfileSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="form-group">
               <label className="form-label" htmlFor="p-name"><User size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Full Name</label>
@@ -109,7 +109,7 @@ export default function Profile() {
             <MsgBox msg={profileMsg} />
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button type="submit" className="btn btn-primary" disabled={profileLoading}>
-                <Save size={16} /> {profileLoading ? 'Saving...' : t('profile.save')}
+                <Save size={16} /> {profileLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
@@ -117,14 +117,14 @@ export default function Profile() {
 
         {/* Password */}
         <div className="card" style={{ padding: 28 }}>
-          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>{t('profile.changePassword')}</h3>
+          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>Change Password</h3>
           <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="form-group">
-              <label className="form-label" htmlFor="cur-pwd"><Lock size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />{t('profile.currentPassword')}</label>
+              <label className="form-label" htmlFor="cur-pwd"><Lock size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Current Password</label>
               <input id="cur-pwd" type="password" className="form-input" value={pwdForm.currentPassword} onChange={e => setPwdForm(f => ({ ...f, currentPassword: e.target.value }))} placeholder="••••••••" required />
             </div>
             <div className="form-group">
-              <label className="form-label" htmlFor="new-pwd"><Lock size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />{t('profile.newPassword')}</label>
+              <label className="form-label" htmlFor="new-pwd"><Lock size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />New Password</label>
               <input id="new-pwd" type="password" className="form-input" value={pwdForm.newPassword} onChange={e => setPwdForm(f => ({ ...f, newPassword: e.target.value }))} placeholder="Min. 6 characters" required />
             </div>
             <MsgBox msg={pwdMsg} />

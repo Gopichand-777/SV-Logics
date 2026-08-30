@@ -97,7 +97,7 @@ export const submitTest = async (req, res) => {
 
     // Save attempt
     const [attempt] = await db.insert(testAttempts).values({
-      userId: req.user.id,
+      studentId: req.user.id,
       testId: parseInt(id),
       score: roundedScore,
       totalMarks,
@@ -140,7 +140,7 @@ export const getAttemptResult = async (req, res) => {
   try {
     const { attemptId } = req.params;
     const [attempt] = await db.select().from(testAttempts).where(
-      and(eq(testAttempts.id, parseInt(attemptId)), eq(testAttempts.userId, req.user.id))
+      and(eq(testAttempts.id, parseInt(attemptId)), eq(testAttempts.studentId, req.user.id))
     );
     if (!attempt) return res.status(404).json({ error: 'Result not found.' });
 
@@ -188,7 +188,7 @@ export const getAttemptHistory = async (req, res) => {
       testCategory: mockTests.category,
     }).from(testAttempts)
       .leftJoin(mockTests, eq(testAttempts.testId, mockTests.id))
-      .where(eq(testAttempts.userId, req.user.id))
+      .where(eq(testAttempts.studentId, req.user.id))
       .orderBy(desc(testAttempts.attemptedAt));
 
     return res.json({ attempts });
@@ -198,13 +198,13 @@ export const getAttemptHistory = async (req, res) => {
   }
 };
 
-async function updateStreak(userId) {
+async function updateStreak(studentId) {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const [streak] = await db.select().from(userStreaks).where(eq(userStreaks.userId, userId));
+    const [streak] = await db.select().from(userStreaks).where(eq(userStreaks.studentId, studentId));
 
     if (!streak) {
-      await db.insert(userStreaks).values({ userId, currentStreak: 1, longestStreak: 1, lastActive: today });
+      await db.insert(userStreaks).values({ studentId, currentStreak: 1, longestStreak: 1, lastActive: today });
       return;
     }
 
@@ -218,7 +218,7 @@ async function updateStreak(userId) {
     const longest = Math.max(newStreak, streak.longestStreak);
     await db.update(userStreaks)
       .set({ currentStreak: newStreak, longestStreak: longest, lastActive: today })
-      .where(eq(userStreaks.userId, userId));
+      .where(eq(userStreaks.studentId, studentId));
   } catch (e) {
     console.error('Streak update error:', e);
   }

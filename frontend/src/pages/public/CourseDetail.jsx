@@ -1,45 +1,659 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Clock, BookOpen, Lock, Play, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
+import {
+  Clock, BookOpen, Lock, Play, ChevronDown, ChevronUp,
+  ArrowLeft, Layers, FileText, ExternalLink, CheckCircle,
+  GraduationCap, PlayCircle, BookMarked, Zap, Star, Users,
+  Shield, Award, TrendingUp,
+} from 'lucide-react';
 import { coursesApi } from '../../api/courses.api.js';
 import { paymentApi } from '../../api/dashboard.api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { useLang } from '../../context/LanguageContext.jsx';
+import './CourseDetail.css';
 
-const formatPrice = (p) => `₹${(p / 100).toLocaleString('en-IN')}`;
+/* ─── Helpers ─────────────────────────────────────────────────────────────── */
+const fmt = (p) => `₹${(p / 100).toLocaleString('en-IN')}`;
 
-export default function CourseDetail() {
-  const { id } = useParams();
-  const { t } = useLang();
-  const { isLoggedIn } = useAuth();
-  const navigate = useNavigate();
-  const [course, setCourse] = useState(null);
-  const [chapters, setChapters] = useState([]);
-  const [materials, setMaterials] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedChapter, setExpandedChapter] = useState(0);
-  const [enrolling, setEnrolling] = useState(false);
-  const [enrolled, setEnrolled] = useState(false);
-  const [error, setError] = useState('');
+const COLORS = {
+  'Quantitative Aptitude':            { a: '#6366f1', g: 'rgba(99,102,241,0.3)',  b: 'rgba(99,102,241,0.08)',  d: 'rgba(99,102,241,0.2)' },
+  'Numerical Aptitude':               { a: '#6366f1', g: 'rgba(99,102,241,0.3)',  b: 'rgba(99,102,241,0.08)',  d: 'rgba(99,102,241,0.2)' },
+  'English Language & Comprehension': { a: '#10b981', g: 'rgba(16,185,129,0.3)',  b: 'rgba(16,185,129,0.08)', d: 'rgba(16,185,129,0.2)' },
+  'English Language':                 { a: '#10b981', g: 'rgba(16,185,129,0.3)',  b: 'rgba(16,185,129,0.08)', d: 'rgba(16,185,129,0.2)' },
+  'General Awareness':                { a: '#f59e0b', g: 'rgba(245,158,11,0.3)',  b: 'rgba(245,158,11,0.08)', d: 'rgba(245,158,11,0.2)' },
+  'General/Banking Awareness':        { a: '#f59e0b', g: 'rgba(245,158,11,0.3)',  b: 'rgba(245,158,11,0.08)', d: 'rgba(245,158,11,0.2)' },
+  'General Intelligence & Reasoning': { a: '#ef4444', g: 'rgba(239,68,68,0.3)',   b: 'rgba(239,68,68,0.08)',  d: 'rgba(239,68,68,0.2)' },
+  'Reasoning Ability':                { a: '#ef4444', g: 'rgba(239,68,68,0.3)',   b: 'rgba(239,68,68,0.08)',  d: 'rgba(239,68,68,0.2)' },
+  'Computer Awareness':               { a: '#8b5cf6', g: 'rgba(139,92,246,0.3)',  b: 'rgba(139,92,246,0.08)', d: 'rgba(139,92,246,0.2)' },
+  'Typing/Skill Test':                { a: '#06b6d4', g: 'rgba(6,182,212,0.3)',   b: 'rgba(6,182,212,0.08)',  d: 'rgba(6,182,212,0.2)' },
+};
+const DC = { a: '#64748b', g: 'rgba(100,116,139,0.3)', b: 'rgba(100,116,139,0.08)', d: 'rgba(100,116,139,0.2)' };
+const getColor = (s) => COLORS[s] || DC;
+
+function groupBySubject(list) {
+  const map = {};
+  for (const ch of list) {
+    const key = ch.subjectName || ch.subject || 'General';
+    if (!map[key]) map[key] = [];
+    map[key].push(ch);
+  }
+  return map;
+}
+
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SUB-COMPONENTS — Player View (Enrolled)
+════════════════════════════════════════════════════════════════════════════ */
+
+
+
+/** Top bar for enrolled player */
+function PlayerBar({ title, index, total, onBack }) {
+  return (
+    <div className="cd-bar">
+      <button className="cd-bar-btn" onClick={onBack}>
+        <ArrowLeft size={14} /> Back
+      </button>
+      <div className="cd-bar-divider" />
+      <p className="cd-bar-title">{title}</p>
+      <div className="cd-bar-right">
+        <span className="cd-enrolled-pill"><CheckCircle size={11} /> Enrolled</span>
+        <span className="cd-bar-counter">
+          {index} <span className="cd-bar-counter-sep">/</span> {total}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Video player or placeholder — handles both external URLs and R2 signed URLs */
+function VideoArea({ chapter, onFetchSignedUrl }) {
+  const [resolvedUrl, setResolvedUrl] = useState(null);
+  const [fetching,    setFetching]    = useState(false);
 
   useEffect(() => {
-    coursesApi.getById(id)
-      .then(res => {
-        setCourse(res.data.course);
-        setChapters((res.data.chapters || []).sort((a, b) => a.orderIndex - b.orderIndex));
-        setMaterials(res.data.materials || []);
+    setResolvedUrl(null);
+    if (!chapter) return;
+    // If chapter already has a direct URL (external/YouTube), use it immediately
+    if (chapter.videoUrl) {
+      setResolvedUrl(chapter.videoUrl);
+      return;
+    }
+    // If chapter has an R2 key, fetch a signed URL from the backend
+    if (chapter.hasVideoKey) {
+      setFetching(true);
+      onFetchSignedUrl(chapter.id)
+        .then(url => setResolvedUrl(url))
+        .catch(() => setResolvedUrl(null))
+        .finally(() => setFetching(false));
+    }
+  }, [chapter?.id, chapter?.videoUrl, chapter?.hasVideoKey]);
+
+  return (
+    <div className="cd-video-shell">
+      {fetching ? (
+        <div className="cd-no-video">
+          <div className="loader-spinner" style={{ width: 32, height: 32 }} />
+          <p className="cd-no-video-text">Loading video...</p>
+        </div>
+      ) : resolvedUrl ? (
+        <div className="cd-video-wrap">
+          <div className="cd-video-ratio">
+            <iframe
+              key={chapter.id}
+              src={resolvedUrl}
+              title={chapter.title}
+              allowFullScreen
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="cd-no-video">
+          <div className="cd-no-video-icon">
+            <PlayCircle size={30} color="var(--cd-primary)" style={{ opacity: 0.5 }} />
+          </div>
+          <p className="cd-no-video-text">No video available for this chapter</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Chapter title + description + nav + materials */
+function ChapterInfoPanel({ chapter, prev, next, onPrev, onNext, materials }) {
+  return (
+    <div className="cd-info cd-s">
+      <div className="cd-info-inner">
+
+        {/* Chapter header */}
+        {chapter && (
+          <div className="cd-ch-meta-row">
+            <div className="cd-ch-meta-col">
+              <p className="cd-ch-label">Chapter {chapter.orderIndex}</p>
+              <h2 className="cd-ch-title">{chapter.title}</h2>
+              {chapter.description && <p className="cd-ch-desc">{chapter.description}</p>}
+            </div>
+            {chapter.durationMin > 0 && (
+              <div className="cd-dur-pill">
+                <Clock size={13} color="var(--cd-primary)" />
+                <span className="cd-dur-pill-text">{chapter.durationMin}m</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="cd-nav">
+          <button className={`cd-nb${prev ? ' on' : ''}`} onClick={() => prev && onPrev()} disabled={!prev}>
+            <ArrowLeft size={14} />
+            <span className="cd-nb-label">{prev ? prev.title : 'Previous'}</span>
+          </button>
+          <button className={`cd-nb next${next ? ' on' : ''}`} onClick={() => next && onNext()} disabled={!next}>
+            <span className="cd-nb-label">{next ? next.title : 'Next'}</span>
+            {next && <Play size={13} style={{ flexShrink: 0 }} />}
+          </button>
+        </div>
+
+        {/* Study materials */}
+        {materials.length > 0 && (
+          <div className="cd-mat-section">
+            <h3 className="cd-mat-heading">
+              <BookMarked size={15} color="var(--cd-primary)" /> Study Materials
+            </h3>
+            <div className="cd-mat-list">
+              {materials.map(m => (
+                <div key={m.id} className="cd-mat">
+                  <div className={`cd-mat-icon cd-mat-icon--${m.type === 'pdf' ? 'pdf' : 'other'}`}>
+                    <FileText size={16} color={m.type === 'pdf' ? 'var(--cd-error)' : 'var(--cd-primary)'} />
+                  </div>
+                  <div className="cd-mat-body">
+                    <p className="cd-mat-name">{m.title}</p>
+                    <p className="cd-mat-type">{m.type || 'PDF'}</p>
+                  </div>
+                  <a href={m.fileUrl} target="_blank" rel="noopener noreferrer" className="cd-mat-link">
+                    <ExternalLink size={11} /> Open
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Subject-grouped chapter sidebar */
+function CourseSidebar({ grouped, chapters, activeId, onSelect }) {
+  const allKeys = Object.keys(grouped);
+  const [collapsed, setCollapsed] = useState({});
+  const toggle = (k) => setCollapsed(s => ({ ...s, [k]: !s[k] }));
+
+  return (
+    <div className="cd-sidebar cd-s">
+      <div className="cd-sb-header">
+        <p className="cd-sb-title">Course Content</p>
+        <p className="cd-sb-meta">{chapters.length} chapters · {allKeys.length} subjects</p>
+      </div>
+
+      {allKeys.map(subj => {
+        const c = getColor(subj);
+        const chaps = grouped[subj];
+        const isOpen = !collapsed[subj];
+        return (
+          <div key={subj} className="cd-sb-subj">
+            {/* Subject toggle */}
+            <button className="cd-subj-btn" onClick={() => toggle(subj)}>
+              <div className="cd-sb-subj-inner">
+                <span className="cd-sb-subj-dot" style={{ background: c.a, boxShadow: `0 0 6px ${c.g}` }} />
+                <span className="cd-sb-subj-name" style={{ color: c.a }}>{subj}</span>
+                <span className="cd-sb-subj-count" style={{ color: c.a, background: c.b, border: `1px solid ${c.d}` }}>
+                  {chaps.length}
+                </span>
+              </div>
+              {isOpen
+                ? <ChevronUp size={13} color="rgba(255,255,255,.25)" />
+                : <ChevronDown size={13} color="rgba(255,255,255,.25)" />}
+            </button>
+
+            {/* Chapter list */}
+            {isOpen && chaps.map(ch => {
+              const active = ch.id === activeId;
+              return (
+                <button
+                  key={ch.id}
+                  className={`cd-ch-btn${active ? ' active' : ''}`}
+                  style={{ borderLeftColor: active ? c.a : 'transparent' }}
+                  onClick={() => onSelect(ch)}
+                >
+                  <div
+                    className="cd-ch-btn-icon"
+                    style={{
+                      background: active ? c.b : 'rgba(255,255,255,.04)',
+                      border:     `1px solid ${active ? c.d : 'rgba(255,255,255,.07)'}`,
+                      boxShadow:  active ? `0 0 8px ${c.g}` : 'none',
+                    }}
+                  >
+                    {active
+                      ? <Play size={11} color={c.a} style={{ fill: c.a }} />
+                      : ch.videoUrl
+                        ? <Play size={10} color="rgba(255,255,255,.3)" />
+                        : <FileText size={10} color="rgba(255,255,255,.2)" />}
+                  </div>
+                  <div className="cd-ch-btn-text-wrap">
+                    <p className="cd-ch-btn-title" style={{ fontWeight: active ? 700 : 500, color: active ? '#fff' : 'rgba(255,255,255,.48)' }}>
+                      {ch.title}
+                    </p>
+                    {ch.durationMin > 0 && (
+                      <p className="cd-ch-btn-dur" style={{ color: active ? c.a : 'rgba(255,255,255,.2)' }}>
+                        {ch.durationMin} min
+                      </p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   ENROLLED VIEW — assembles sub-components
+════════════════════════════════════════════════════════════════════════════ */
+function EnrolledView({ course, chapters, materials, navigate, fetchSignedUrl }) {
+  const grouped = groupBySubject(chapters);
+  const [active, setActive] = useState(chapters[0] || null);
+  const idx  = chapters.findIndex(c => c.id === active?.id);
+  const prev = idx > 0 ? chapters[idx - 1] : null;
+  const next = idx < chapters.length - 1 ? chapters[idx + 1] : null;
+
+  return (
+    <div className="cd-overlay">
+      <PlayerBar
+        title={course.title}
+        index={idx + 1}
+        total={chapters.length}
+        onBack={() => navigate(-1)}
+      />
+      <div className="cd-body">
+        <div className="cd-left">
+          <VideoArea chapter={active} onFetchSignedUrl={fetchSignedUrl} />
+          <ChapterInfoPanel
+            chapter={active}
+            prev={prev}
+            next={next}
+            onPrev={() => setActive(prev)}
+            onNext={() => setActive(next)}
+            materials={materials}
+          />
+        </div>
+        <CourseSidebar
+          grouped={grouped}
+          chapters={chapters}
+          activeId={active?.id}
+          onSelect={setActive}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SUB-COMPONENTS — Detail Page (non-enrolled)
+════════════════════════════════════════════════════════════════════════════ */
+
+/** Course hero banner */
+function CourseHero({ course, chapCount, subjectCount, onBack }) {
+  return (
+    <div className="cd-hero">
+      <div className="cd-hero-inner">
+        <button className="cd-back" onClick={onBack}><ArrowLeft size={14} /> Back to Courses</button>
+        <div className="cd-cat"><Zap size={10} /> {course.category}</div>
+        <h1 className="cd-h1">{course.title}</h1>
+        {course.instructor && (
+          <p className="cd-instructor">
+            <Award size={14} color="rgba(165,180,252,.7)" />
+            Instructor: <strong>{course.instructor}</strong>
+          </p>
+        )}
+        <div className="cd-meta-row">
+          {[[Clock, `${course.durationHours} hours`], [BookOpen, `${chapCount} chapters`], [Layers, `${subjectCount} subjects`], [Users, 'All levels']].map(([Icon, lbl]) => (
+            <span key={lbl} className="cd-chip"><Icon size={13} /> {lbl}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** About card */
+function AboutCard({ description }) {
+  return (
+    <div className="cd-card">
+      <div className="cd-card-hd">
+        <h2 className="cd-card-title"><BookMarked size={16} color="var(--cd-primary)" /> About this Course</h2>
+      </div>
+      <div className="cd-card-bd">
+        <p className="cd-desc">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+/** Free chapter video preview in the detail page accordion.
+ *  - If chapter.videoUrl is set (external/YouTube) → embed directly.
+ *  - If chapter.hasVideoKey is true (R2 private) → call /api/courses/chapters/:id/video
+ *    to get a signed URL, then embed.
+ */
+function FreeChapterPreview({ chapter }) {
+  const [url, setUrl]         = useState(chapter.videoUrl || null);
+  const [loading, setLoading] = useState(!chapter.videoUrl && chapter.hasVideoKey);
+  const [errored, setErrored] = useState(false);
+
+  useEffect(() => {
+    if (chapter.videoUrl) { setUrl(chapter.videoUrl); return; }
+    if (!chapter.hasVideoKey) return;
+    setLoading(true);
+    coursesApi.getChapterVideo(chapter.id)
+      .then(res => setUrl(res.data.url))
+      .catch(() => setErrored(true))
+      .finally(() => setLoading(false));
+  }, [chapter.id]);
+
+  if (loading) return (
+    <div className="cd-locked" style={{ gap: 8 }}>
+      <div className="loader-spinner" style={{ width: 16, height: 16 }} />
+      Loading preview...
+    </div>
+  );
+  if (errored || !url) return (
+    <div className="cd-locked"><Lock size={15} /> Enroll to unlock this chapter</div>
+  );
+  return <div className="cd-video-preview"><iframe src={url} title={chapter.title} allowFullScreen /></div>;
+}
+
+/** Subject accordion for detail page */
+function ContentAccordion({ grouped, collapsedSubjects, setCollapsedSubjects, expandedChapterId, setExpandedChapterId }) {
+  return (
+    <div>
+      {Object.entries(grouped).map(([subj, chaps]) => {
+        const c = getColor(subj);
+        const isOpen = !collapsedSubjects[subj];
+        return (
+          <div key={subj} className="cd-subj" style={{ border: `1px solid ${c.d}` }}>
+            {/* Subject toggle */}
+            <button className="cd-subj-hd" style={{ background: c.b }} onClick={() => setCollapsedSubjects(s => ({ ...s, [subj]: !s[subj] }))}>
+              <div className="cd-subj-hd-inner">
+                <span className="cd-subj-dot" style={{ background: c.a, boxShadow: `0 0 6px ${c.g}` }} />
+                <span className="cd-subj-name" style={{ color: c.a }}>{subj}</span>
+                <span className="cd-subj-count" style={{ color: c.a, background: `${c.a}1a`, border: `1px solid ${c.d}` }}>
+                  {chaps.length} {chaps.length === 1 ? 'chapter' : 'chapters'}
+                </span>
+              </div>
+              {isOpen ? <ChevronUp size={16} color={c.a} /> : <ChevronDown size={16} color={c.a} />}
+            </button>
+
+            {/* Chapter rows */}
+            {isOpen && (
+              <div style={{ borderTop: `1px solid ${c.d}` }}>
+                {chaps.map((ch, i) => {
+                  const expanded = expandedChapterId === ch.id;
+                  return (
+                    <div key={ch.id} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--cd-border)' }}>
+                      <button className="cd-ch-row" onClick={() => setExpandedChapterId(p => p === ch.id ? null : ch.id)}>
+                        <div className="cd-ch-row-left">
+                          <span className="cd-ch-index" style={{ background: c.b, border: `1px solid ${c.d}`, color: c.a }}>
+                            {ch.orderIndex}
+                          </span>
+                          <span className="cd-ch-row-title">{ch.title}</span>
+                          {ch.isFree && <span className="cd-free"><Star size={9} className="cd-free-icon" />Free</span>}
+                        </div>
+                        <div className="cd-ch-row-right">
+                          {ch.durationMin > 0 && (
+                            <span className="cd-ch-dur"><Clock size={11} /> {ch.durationMin}m</span>
+                          )}
+                          {!ch.isFree && <Lock size={13} color="var(--cd-text-light)" />}
+                          {expanded ? <ChevronUp size={14} color="var(--cd-text-muted)" /> : <ChevronDown size={14} color="var(--cd-text-muted)" />}
+                        </div>
+                      </button>
+                      {expanded && (
+                        <div className="cd-ch-preview">
+                          {ch.description && <p className="cd-ch-preview-desc">{ch.description}</p>}
+                          {ch.isFree && (ch.videoUrl || ch.hasVideoKey)
+                            ? <FreeChapterPreview chapter={ch} />
+                            : <div className="cd-locked"><Lock size={15} /> Enroll to unlock this chapter</div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Materials list (locked) */
+function MaterialsCard({ materials }) {
+  if (!materials.length) return null;
+  return (
+    <div className="cd-card">
+      <div className="cd-card-hd">
+        <h2 className="cd-card-title"><FileText size={16} color="var(--cd-primary)" /> Study Materials</h2>
+        <p className="cd-card-sub">Enroll to access all download links</p>
+      </div>
+      <div className="cd-card-bd">
+        {materials.map(m => (
+          <div key={m.id} className="cd-mat-row">
+            <div className={`cd-mat-row-icon cd-mat-row-icon--${m.type === 'pdf' ? 'pdf' : 'other'}`}>
+              <FileText size={17} color={m.type === 'pdf' ? 'var(--cd-error)' : 'var(--cd-primary)'} />
+            </div>
+            <div className="cd-mat-row-body">
+              <div className="cd-mat-row-name">{m.title}</div>
+              <div className="cd-mat-row-type">{m.type || 'PDF'}</div>
+            </div>
+            <div className="cd-mat-row-lock">
+              <Lock size={12} /> Enroll to access
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Inline video player card — unused in current render flow but kept for future */
+function InlinePlayerCard({ chapters }) {
+  const grouped = groupBySubject(chapters);
+  const [active, setActive] = useState(chapters[0] || null);
+  const idx  = chapters.findIndex(c => c.id === active?.id);
+  const prev = idx > 0 ? chapters[idx - 1] : null;
+  const next = idx < chapters.length - 1 ? chapters[idx + 1] : null;
+
+  return (
+    <div className="cd-ipc">
+      {/* Header badge */}
+      <div className="cd-ipc-header">
+        <span style={{ fontSize: '.82rem', fontWeight: 700, color: 'rgba(255,255,255,.75)' }}>Your Course</span>
+        <span className="cd-ipc-pill"><CheckCircle size={10} /> Enrolled</span>
+      </div>
+
+      {/* Video */}
+      {active?.videoUrl ? (
+        <div className="cd-ipc-video">
+          <iframe key={active.id} src={active.videoUrl} title={active.title}
+            allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />
+        </div>
+      ) : (
+        <div className="cd-ipc-novideo">
+          <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(99,102,241,.12)', border: '1px solid rgba(99,102,241,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+            <PlayCircle size={22} color="rgba(99,102,241,.55)" />
+          </div>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,.28)', fontSize: '.8rem', fontWeight: 500, position: 'relative', zIndex: 1 }}>No video for this chapter</p>
+        </div>
+      )}
+
+      {/* Active chapter info */}
+      {active && (
+        <div className="cd-ipc-info">
+          <p className="cd-ipc-label">Chapter {active.orderIndex}</p>
+          <p className="cd-ipc-title">{active.title}</p>
+        </div>
+      )}
+
+      {/* Prev / Next nav */}
+      <div className="cd-ipc-nav">
+        <button className={`cd-ipc-btn${prev ? ' on' : ''}`} disabled={!prev} onClick={() => prev && setActive(prev)}>
+          <ArrowLeft size={13} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prev ? prev.title : 'Previous'}</span>
+        </button>
+        <button className={`cd-ipc-btn on next${next ? ' on' : ''}`} disabled={!next} onClick={() => next && setActive(next)}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{next ? next.title : 'Next'}</span>
+          {next && <Play size={12} style={{ flexShrink: 0 }} />}
+        </button>
+      </div>
+
+      {/* Chapter list */}
+      <div className="cd-ipc-list cd-s">
+        {Object.entries(grouped).map(([subj, chaps]) => {
+          const c = getColor(subj);
+          return (
+            <div key={subj}>
+              {/* Subject label */}
+              <div style={{ padding: '8px 14px 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.a, boxShadow: `0 0 5px ${c.g}`, flexShrink: 0 }} />
+                <span style={{ fontSize: '.67rem', fontWeight: 700, color: c.a, textTransform: 'uppercase', letterSpacing: '.07em' }}>{subj}</span>
+              </div>
+              {chaps.map(ch => {
+                const isActive = ch.id === active?.id;
+                return (
+                  <button key={ch.id} className={`cd-ipc-ch${isActive ? ' active' : ''}`}
+                    style={{ borderLeftColor: isActive ? c.a : 'transparent' }}
+                    onClick={() => setActive(ch)}>
+                    <div style={{ width: 24, height: 24, borderRadius: 6, flexShrink: 0, background: isActive ? c.b : 'rgba(255,255,255,.04)', border: `1px solid ${isActive ? c.d : 'rgba(255,255,255,.07)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
+                      {isActive ? <Play size={9} color={c.a} style={{ fill: c.a }} /> : <Play size={9} color="rgba(255,255,255,.25)" />}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: '.76rem', fontWeight: isActive ? 700 : 500, color: isActive ? '#fff' : 'rgba(255,255,255,.45)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.title}</p>
+                      {ch.durationMin > 0 && <p style={{ margin: '1px 0 0', fontSize: '.64rem', color: isActive ? c.a : 'rgba(255,255,255,.2)' }}>{ch.durationMin} min</p>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+/** Sticky enroll card */
+function EnrollCard({ course, chapCount, subjectCount, enrolling, error, onEnroll }) {
+  const discount = course.originalPrice ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
+  const features = [
+    [Clock,         `${course.durationHours}+ hours of content`],
+    [BookOpen,      `${chapCount} video chapters`],
+    [Layers,        `${subjectCount} subject areas`],
+    [GraduationCap, 'Lifetime access'],
+    [Shield,        'Certificate of completion'],
+    [TrendingUp,    'Progress tracking'],
+  ];
+  return (
+    <div className="cd-enroll">
+      <div className="cd-enroll-top">
+        <p className="cd-price">{fmt(course.price)}</p>
+        {course.originalPrice ? (
+          <div className="cd-price-row">
+            <span className="cd-orig">{fmt(course.originalPrice)}</span>
+            <span className="cd-off">{discount}% OFF</span>
+          </div>
+        ) : (
+          <div className="cd-price-spacer" />
+        )}
+        {error && <div className="cd-err">⚠ {error}</div>}
+        <button id="enroll-now-btn" className="cd-enroll-btn" onClick={onEnroll} disabled={enrolling}>
+          {enrolling
+            ? <><div className="cd-btn-spinner cd-spin" />Processing...</>
+            : <><Zap size={17} />Enroll Now</>}
+        </button>
+        <p className="cd-guarantee">30-day money-back guarantee</p>
+      </div>
+      <div className="cd-enroll-body">
+        <p className="cd-includes-label">This course includes</p>
+        {features.map(([Icon, lbl]) => (
+          <div key={lbl} className="cd-feat">
+            <div className="cd-feat-icon"><Icon size={14} color="var(--cd-primary)" /></div>
+            {lbl}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MAIN EXPORT
+════════════════════════════════════════════════════════════════════════════ */
+export default function CourseDetail() {
+  const { id: rawId }  = useParams();
+  const courseId       = parseInt(rawId, 10);  // single source of truth — always a number
+  const { isLoggedIn } = useAuth();
+  const navigate       = useNavigate();
+
+  const [course,    setCourse]    = useState(null);
+  const [chapters,  setChapters]  = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [enrolled,  setEnrolled]  = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [error,     setError]     = useState('');
+  const [expandedChapterId,  setExpandedChapterId]  = useState(null);
+  const [collapsedSubjects, setCollapsedSubjects] = useState({});
+
+  /* ── data fetch ─────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    if (isNaN(courseId)) { navigate('/courses'); return; }
+    Promise.all([
+      coursesApi.getById(courseId),
+      isLoggedIn
+        ? paymentApi.checkEnrollment(courseId).catch(() => ({ data: { isEnrolled: false } }))
+        : Promise.resolve({ data: { isEnrolled: false } }),
+    ])
+      .then(([courseRes, enrollRes]) => {
+        setCourse(courseRes.data.course);
+        const sorted = (courseRes.data.chapters || []).sort((a, b) => a.orderIndex - b.orderIndex);
+        setChapters(sorted);
+        setMaterials(courseRes.data.materials || []);
+        const grp = groupBySubject(sorted);
+        const init = {};
+        Object.keys(grp).slice(1).forEach(k => { init[k] = true; });
+        setCollapsedSubjects(init);
+        setEnrolled(enrollRes.data.isEnrolled);
       })
       .catch(() => navigate('/courses'))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [courseId, isLoggedIn]);
 
+  /* ── fetch signed video URL for R2 chapters ─────────────────────────────── */
+  // Called by VideoArea and FreeChapterPreview when a chapter has hasVideoKey=true.
+  // Returns the presigned URL string or throws.
+  const fetchSignedUrl = useCallback(async (chapterId) => {
+    const { data } = await coursesApi.getChapterVideo(chapterId);
+    return data.url;
+  }, []);
+
+  /* ── enroll handler ─────────────────────────────────────────────────────── */
   const handleEnroll = async () => {
     if (!isLoggedIn) return navigate('/login');
-    setEnrolling(true);
-    setError('');
+    setEnrolling(true); setError('');
     try {
-      const { data } = await paymentApi.initiate(parseInt(id));
-      // Mock payment — simulate success after 1.5s
+      const { data } = await paymentApi.initiate(courseId);
       await new Promise(r => setTimeout(r, 1500));
       await paymentApi.verify(data.paymentId);
       setEnrolled(true);
@@ -47,152 +661,79 @@ export default function CourseDetail() {
       const msg = err.response?.data?.error || 'Enrollment failed. Please try again.';
       if (msg.includes('already enrolled')) setEnrolled(true);
       else setError(msg);
-    } finally {
-      setEnrolling(false);
-    }
+    } finally { setEnrolling(false); }
   };
 
+  /* ── loading ────────────────────────────────────────────────────────────── */
   if (loading) return (
     <div className="loader" style={{ minHeight: '60vh' }}>
       <div className="loader-spinner" />
-      <p className="loader-text">{t('common.loading')}</p>
+      <p className="loader-text">Loading...</p>
     </div>
   );
 
   if (!course) return null;
 
+  /* ── enrolled → full-screen player ─────────────────────────────────────── */
+  if (enrolled) {
+    return (
+      <EnrolledView
+        course={course}
+        chapters={chapters}
+        materials={materials}
+        navigate={navigate}
+        fetchSignedUrl={fetchSignedUrl}
+      />
+    );
+  }
+
+  /* ── not enrolled → detail page ─────────────────────────────────────────── */
+  const grouped      = groupBySubject(chapters);
+  const subjectCount = Object.keys(grouped).length;
+
   return (
-    <div style={{ background: 'var(--color-bg)', minHeight: '80vh' }}>
-      {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #0f1f3d 0%, #1d3a8a 100%)', padding: '48px 0' }}>
-        <div className="container">
-          <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm" style={{ marginBottom: 20 }}>
-            <ArrowLeft size={16} /> Back
-          </button>
-          <span className="badge badge-accent" style={{ marginBottom: 16 }}>{course.category}</span>
-          <h1 style={{ color: 'white', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', fontWeight: 800, marginBottom: 12, lineHeight: 1.3 }}>
-            {course.title}
-          </h1>
-          <div style={{ display: 'flex', gap: 24, color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Clock size={15} /> {course.durationHours} hours</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><BookOpen size={15} /> {course.chaptersCount} chapters</span>
-            {course.instructor && <span>👨‍🏫 {course.instructor}</span>}
+    <div className="cd-page">
+      <CourseHero
+        course={course}
+        chapCount={chapters.length}
+        subjectCount={subjectCount}
+        onBack={() => navigate(-1)}
+      />
+
+      <div className="cd-grid">
+        {/* Left column */}
+        <div>
+          <AboutCard description={course.description} />
+
+          <div className="cd-card">
+            <div className="cd-card-hd">
+              <h2 className="cd-card-title"><Layers size={16} color="var(--cd-primary)" /> Course Content</h2>
+              <p className="cd-card-sub">{chapters.length} chapters across {subjectCount} subjects</p>
+            </div>
+            <div className="cd-card-bd">
+              <ContentAccordion
+                grouped={grouped}
+                collapsedSubjects={collapsedSubjects}
+                setCollapsedSubjects={setCollapsedSubjects}
+                expandedChapterId={expandedChapterId}
+                setExpandedChapterId={setExpandedChapterId}
+              />
+            </div>
           </div>
+
+          <MaterialsCard materials={materials} />
         </div>
-      </div>
 
-      <div className="container" style={{ padding: '40px 24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 32, alignItems: 'start' }}>
-          {/* Left */}
-          <div>
-            {/* Description */}
-            <div className="card" style={{ padding: 28, marginBottom: 24 }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 16 }}>About this Course</h2>
-              <p style={{ color: 'var(--color-text-muted)', lineHeight: 1.8 }}>{course.description}</p>
-            </div>
-
-            {/* Chapters */}
-            <div className="card" style={{ padding: 28, marginBottom: 24 }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 20 }}>
-                Course Content — {chapters.length} Chapters
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {chapters.map((ch, i) => (
-                  <div key={ch.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                    <button
-                      onClick={() => setExpandedChapter(expandedChapter === i ? -1 : i)}
-                      style={{
-                        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '14px 16px', background: 'var(--color-surface-2)', border: 'none', cursor: 'pointer',
-                        color: 'var(--color-text)', fontFamily: 'var(--font)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-text-muted)', width: 24 }}>{i + 1}.</span>
-                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{ch.title}</span>
-                        {ch.isFree && <span className="badge badge-success" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>Free</span>}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {ch.durationMin > 0 && <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{ch.durationMin} min</span>}
-                        {!ch.isFree && !enrolled && <Lock size={14} color="var(--color-text-muted)" />}
-                        {expandedChapter === i ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                      </div>
-                    </button>
-                    {expandedChapter === i && (
-                      <div style={{ padding: '16px', borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
-                        {ch.description && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: 12 }}>{ch.description}</p>}
-                        {(ch.isFree || enrolled) && ch.videoUrl ? (
-                          <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                            <iframe src={ch.videoUrl} title={ch.title} allowFullScreen
-                              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} />
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', background: 'var(--color-bg-alt)', borderRadius: 'var(--radius-sm)' }}>
-                            <Lock size={16} color="var(--color-text-muted)" />
-                            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Enroll to unlock this chapter</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Right — Enroll Card */}
-          <div style={{ position: 'sticky', top: 80 }}>
-            <div className="card" style={{ padding: 28 }}>
-              <div className="course-price" style={{ marginBottom: 20 }}>
-                <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>{formatPrice(course.price)}</span>
-                {course.originalPrice && (
-                  <span style={{ fontSize: '1rem', color: 'var(--color-text-light)', textDecoration: 'line-through' }}>
-                    {formatPrice(course.originalPrice)}
-                  </span>
-                )}
-                {course.originalPrice && (
-                  <span className="badge badge-success">
-                    {Math.round((1 - course.price / course.originalPrice) * 100)}% OFF
-                  </span>
-                )}
-              </div>
-
-              {error && <div className="toast-error" style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 16, fontSize: '0.875rem', background: 'rgba(239,68,68,0.08)', color: 'var(--color-error)' }}>{error}</div>}
-
-              {enrolled ? (
-                <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                  <div style={{ width: 52, height: 52, background: 'rgba(16,185,129,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                    <Play size={24} color="var(--color-success)" />
-                  </div>
-                  <p style={{ fontWeight: 700, color: 'var(--color-success)', marginBottom: 8 }}>You're Enrolled! 🎉</p>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>All chapters are now unlocked for you.</p>
-                </div>
-              ) : (
-                <button
-                  onClick={handleEnroll}
-                  disabled={enrolling}
-                  className="btn btn-primary btn-full btn-lg"
-                  style={{ marginBottom: 16 }}
-                >
-                  {enrolling ? (
-                    <><div style={{ width: 18, height: 18, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> Processing...</>
-                  ) : t('course.enrollNow')}
-                </button>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                  <Clock size={15} /> {course.durationHours} hours of content
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                  <BookOpen size={15} /> {course.chaptersCount} chapters
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                  <Play size={15} /> Lifetime access
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Right column — sticky enroll card */}
+        <div>
+          <EnrollCard
+            course={course}
+            chapCount={chapters.length}
+            subjectCount={subjectCount}
+            enrolling={enrolling}
+            error={error}
+            onEnroll={handleEnroll}
+          />
         </div>
       </div>
     </div>

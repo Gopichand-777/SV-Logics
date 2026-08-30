@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: svlogics-api
+    runtime: node
+    # Singapore is the closest Render region to India (~70ms latency)
+    region: singapore
+    # Starter plan = $7/month, always-on (no cold starts unlike free tier)
+    plan: starter
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+
+    envVars:
+      # Non-secret values set here
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: FRONTEND_URL
+        value: https://svlogics.pages.dev
+      - key: ADMIN_URL
+        value: https://svlogics-admin.pages.dev
+      - key: R2_BUCKET_NAME
+        value: svlogics-prod
+      - key: LOG_LEVEL
+        value: info
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      - key: PAYMENT_GATEWAY
+        value: mock
+
+      # Secret values — set manually in Render dashboard (Environment tab)
+      # DO NOT put actual values here; this file is committed to Git
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

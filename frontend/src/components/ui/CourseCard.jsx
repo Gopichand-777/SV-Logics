@@ -1,18 +1,29 @@
 import { Link } from 'react-router-dom';
 import { Clock, BookOpen, ChevronRight } from 'lucide-react';
-import { useLang } from '../../context/LanguageContext.jsx';
+
+
+// Default images per exam category
+const CATEGORY_IMAGES = {
+  'SSC CGL':            '/course-images/ssc-cgl.png',
+  'SSC MTS':            '/course-images/ssc-mts.png',
+  'SSC CHSL':           '/course-images/ssc-chsl.png',
+  'Banking (IBPS/SBI)': '/course-images/banking.png',
+};
+const DEFAULT_IMAGE = '/course-images/default-course.png';
 
 const formatPrice = (paise) => `₹${(paise / 100).toLocaleString('en-IN')}`;
 
 export default function CourseCard({ course }) {
-  const { t } = useLang();
+
   return (
     <div className="card course-card">
       <div className="course-card-image">
-        {course.thumbnailUrl
-          ? <img src={course.thumbnailUrl} alt={course.title} loading="lazy" />
-          : <BookOpen size={48} color="var(--color-text-light)" />
-        }
+        <img
+          src={course.thumbnailUrl || CATEGORY_IMAGES[course.category] || DEFAULT_IMAGE}
+          alt={course.title}
+          loading="lazy"
+          onError={e => { e.currentTarget.src = DEFAULT_IMAGE; }}
+        />
         <div className="course-card-badge">
           <span className="badge badge-primary">{course.category}</span>
         </div>
@@ -25,7 +36,7 @@ export default function CourseCard({ course }) {
             <Clock size={13} /> {course.durationHours}h
           </span>
           <span className="course-card-meta-item">
-            <BookOpen size={13} /> {course.chaptersCount} {t('course.chapters')}
+            <BookOpen size={13} /> {course.chaptersCount} Chapters
           </span>
         </div>
         <div className="course-card-footer">
@@ -36,7 +47,7 @@ export default function CourseCard({ course }) {
             )}
           </div>
           <Link to={`/courses/${course.id}`} className="course-card-link">
-            {t('course.viewDetails')} <ChevronRight size={14} style={{ verticalAlign: 'middle' }} />
+            View Details <ChevronRight size={14} style={{ verticalAlign: 'middle' }} />
           </Link>
         </div>
       </div>

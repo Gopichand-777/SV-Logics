@@ -8,6 +8,10 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:admin": "cd admin && npm run dev",
+    "build": "npm run build:frontend && npm run build:admin",
+    "build:frontend": "cd frontend && npm run build",
+    "build:admin": "cd admin && npm run build",
+    "start:prod": "cd backend && npm start",
     "install:all": "cd backend && npm install && cd ../frontend && npm install && cd ../admin && npm install",
     "db:push": "cd backend && npm run db:push",
     "db:seed": "cd backend && npm run db:seed"
