@@ -1,22 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, X, Save, Filter, BookOpen, Info } from 'lucide-react';
 import { adminApi } from '../api/admin.api.js';
 
-const CATEGORIES = ['SSC CGL', 'SSC MTS', 'SSC CHSL', 'Banking (IBPS/SBI)'];
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
-
-const SUBJECTS_BY_CATEGORY = {
-  'SSC CGL':            ['Quantitative Aptitude', 'English Language & Comprehension', 'General Awareness', 'General Intelligence & Reasoning'],
-  'SSC CHSL':           ['Quantitative Aptitude', 'English Language & Comprehension', 'General Awareness', 'General Intelligence & Reasoning', 'Typing/Skill Test'],
-  'SSC MTS':            ['Numerical Aptitude', 'Reasoning Ability', 'General Awareness', 'English Language'],
-  'Banking (IBPS/SBI)': ['Quantitative Aptitude', 'Reasoning Ability', 'English Language', 'General/Banking Awareness', 'Computer Awareness'],
-};
 
 const DIFF_COLOR = { easy: '#10b981', medium: '#f59e0b', hard: '#ef4444' };
 
 const initTest = {
-  title: '', description: '', category: 'SSC CGL', subject: '',
+  title: '', description: '', category: '', subject: '',
   difficulty: 'medium', durationMinutes: 60,
   defaultMarks: 2, defaultNegativeMarks: 0.5,
   isPublished: false,
@@ -67,6 +59,23 @@ export default function AdminTests() {
   const load = () => adminApi.getTests().then(r => setTests(r.data.tests)).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
+  // ── Derive categories dynamically from fetched tests ──────────────────────
+  const allCategories = useMemo(() => {
+    return [...new Set(tests.map(t => t.category).filter(Boolean))].sort();
+  }, [tests]);
+
+  // ── Derive subjects for the currently selected filter category ────────────
+  const filterSubjectOptions = useMemo(() => {
+    if (!filterCategory) return [];
+    return [...new Set(tests.filter(t => t.category === filterCategory).map(t => t.subject).filter(Boolean))].sort();
+  }, [tests, filterCategory]);
+
+  // ── Derive subjects for the form's selected category ─────────────────────
+  const formSubjectOptions = useMemo(() => {
+    if (!form.category) return [];
+    return [...new Set(tests.filter(t => t.category === form.category).map(t => t.subject).filter(Boolean))].sort();
+  }, [tests, form.category]);
+
   const openModal = (test = null) => {
     setEditTest(test);
     setForm(test ? { ...test } : initTest);
@@ -92,8 +101,6 @@ export default function AdminTests() {
     );
   };
 
-  // Available subjects for the current filter category
-  const filterSubjectOptions = filterCategory ? (SUBJECTS_BY_CATEGORY[filterCategory] || []) : [];
 
   // Apply filters client-side
   const displayed = tests.filter(t => {
@@ -126,7 +133,7 @@ export default function AdminTests() {
           onChange={e => { setFilterCategory(e.target.value); setFilterSubject(''); }}
         >
           <option value="">All Categories</option>
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          {allCategories.map(c => <option key={c}>{c}</option>)}
         </select>
         <select
           className="form-select"
@@ -230,9 +237,12 @@ export default function AdminTests() {
                   className="form-select"
                   value={form.category}
                   onChange={e => setForm(f => ({ ...f, category: e.target.value, subject: '' }))}
-                >
-                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
+                  list="category-options"
+                  placeholder="e.g. SSC CGL"
+                />
+                <datalist id="category-options">
+                  {allCategories.map(c => <option key={c} value={c} />)}
+                </datalist>
               </div>
               <div className="form-group">
                 <label className="form-label">Subject</label>
@@ -240,12 +250,12 @@ export default function AdminTests() {
                   className="form-select"
                   value={form.subject}
                   onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-                >
-                  <option value="">— Select Subject —</option>
-                  {(SUBJECTS_BY_CATEGORY[form.category] || []).map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                  list="subject-options"
+                  placeholder="e.g. Quantitative Aptitude"
+                />
+                <datalist id="subject-options">
+                  {formSubjectOptions.map(s => <option key={s} value={s} />)}
+                </datalist>
               </div>
               <div className="form-group">
                 <label className="form-label">Difficulty</label>

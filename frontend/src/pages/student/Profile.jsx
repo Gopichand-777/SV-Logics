@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, Lock, Save, Camera } from 'lucide-react';
+import { User, Phone, Save, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { authApi } from '../../api/auth.api.js';
 
@@ -7,17 +7,14 @@ import { authApi } from '../../api/auth.api.js';
 export default function Profile() {
   const { user, login } = useAuth();
 
-  const [profile, setProfile] = useState({ name: '', phone: '', avatarUrl: '' });
-  const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '' });
+  const [profile, setProfile] = useState({ name: '', phone: '' });
   const [profileMsg, setProfileMsg] = useState({ text: '', type: '' });
-  const [pwdMsg, setPwdMsg] = useState({ text: '', type: '' });
   const [profileLoading, setProfileLoading] = useState(false);
-  const [pwdLoading, setPwdLoading] = useState(false);
 
   useEffect(() => {
     authApi.getMe().then(res => {
       const u = res.data.user;
-      setProfile({ name: u.name || '', phone: u.phone || '', avatarUrl: u.avatarUrl || '' });
+      setProfile({ name: u.name || '', phone: u.phone || '' });
     });
   }, []);
 
@@ -28,30 +25,12 @@ export default function Profile() {
     try {
       const { data } = await authApi.updateMe(profile);
       setProfileMsg({ text: 'Profile updated successfully!', type: 'success' });
-      // Update token name
       const token = localStorage.getItem('svlogics-token');
       login(token, { ...user, ...data.user });
     } catch (err) {
       setProfileMsg({ text: err.response?.data?.error || 'Update failed.', type: 'error' });
     } finally {
       setProfileLoading(false);
-    }
-  };
-
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    if (!pwdForm.currentPassword || !pwdForm.newPassword) { setPwdMsg({ text: 'Both fields required.', type: 'error' }); return; }
-    if (pwdForm.newPassword.length < 6) { setPwdMsg({ text: 'Password must be at least 6 characters.', type: 'error' }); return; }
-    setPwdLoading(true);
-    setPwdMsg({ text: '', type: '' });
-    try {
-      await authApi.changePassword(pwdForm);
-      setPwdMsg({ text: 'Password changed successfully!', type: 'success' });
-      setPwdForm({ currentPassword: '', newPassword: '' });
-    } catch (err) {
-      setPwdMsg({ text: err.response?.data?.error || 'Failed to change password.', type: 'error' });
-    } finally {
-      setPwdLoading(false);
     }
   };
 
@@ -71,16 +50,15 @@ export default function Profile() {
       <div className="container" style={{ maxWidth: 720 }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 28 }}>My Profile</h1>
 
-        {/* Avatar */}
+        {/* Avatar + Info */}
         <div className="card" style={{ padding: 28, marginBottom: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
             <div style={{
               width: 72, height: 72, borderRadius: '50%', background: 'var(--color-primary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '1.5rem', fontWeight: 800, color: 'white', flexShrink: 0,
-              overflow: 'hidden', position: 'relative',
             }}>
-              {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : AVATAR_INITIALS}
+              {AVATAR_INITIALS}
             </div>
             <div>
               <h3 style={{ fontWeight: 700, marginBottom: 4 }}>{user?.name}</h3>
@@ -102,10 +80,7 @@ export default function Profile() {
               <label className="form-label" htmlFor="p-phone"><Phone size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Phone <span className="optional">(optional)</span></label>
               <input id="p-phone" type="tel" className="form-input" value={profile.phone} onChange={e => setProfile(f => ({ ...f, phone: e.target.value }))} placeholder="+91 98765 43210" />
             </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="p-avatar"><Camera size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Avatar URL <span className="optional">(optional)</span></label>
-              <input id="p-avatar" type="url" className="form-input" value={profile.avatarUrl} onChange={e => setProfile(f => ({ ...f, avatarUrl: e.target.value }))} placeholder="https://..." />
-            </div>
+
             <MsgBox msg={profileMsg} />
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button type="submit" className="btn btn-primary" disabled={profileLoading}>
@@ -115,26 +90,27 @@ export default function Profile() {
           </form>
         </div>
 
-        {/* Password */}
-        <div className="card" style={{ padding: 28 }}>
-          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>Change Password</h3>
-          <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="cur-pwd"><Lock size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Current Password</label>
-              <input id="cur-pwd" type="password" className="form-input" value={pwdForm.currentPassword} onChange={e => setPwdForm(f => ({ ...f, currentPassword: e.target.value }))} placeholder="••••••••" required />
-            </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="new-pwd"><Lock size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />New Password</label>
-              <input id="new-pwd" type="password" className="form-input" value={pwdForm.newPassword} onChange={e => setPwdForm(f => ({ ...f, newPassword: e.target.value }))} placeholder="Min. 6 characters" required />
-            </div>
-            <MsgBox msg={pwdMsg} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" className="btn btn-primary" disabled={pwdLoading}>
-                <Lock size={16} /> {pwdLoading ? 'Changing...' : 'Change Password'}
-              </button>
-            </div>
-          </form>
+        {/* Password info notice */}
+        <div className="card" style={{
+          padding: 24,
+          display: 'flex', alignItems: 'center', gap: 16,
+          border: '1px solid var(--color-border)',
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+            background: 'rgba(245,158,11,0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Lock size={20} color="#f59e0b" />
+          </div>
+          <div>
+            <p style={{ fontWeight: 700, marginBottom: 4, fontSize: '0.95rem' }}>Password managed by Administrator</p>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', lineHeight: 1.6 }}>
+              For security reasons, only the super admin can change passwords. If you have forgotten your credentials or need a password reset, please contact your administrator.
+            </p>
+          </div>
         </div>
+
       </div>
     </div>
   );
