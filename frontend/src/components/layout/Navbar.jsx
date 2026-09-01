@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sun, Moon, Menu, X, User, LogOut, LayoutDashboard, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -12,6 +12,19 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [userMenuOpen]);
 
   const handleLogout = () => {
     logout();
@@ -43,7 +56,7 @@ export default function Navbar() {
           </button>
 
           {isLoggedIn ? (
-            <div style={{ position: 'relative' }}>
+            <div ref={menuRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setUserMenuOpen(o => !o)}
                 className="btn btn-outline btn-sm"
@@ -79,10 +92,7 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <>
-              <Link to="/login" className="nav-link" style={{ fontWeight: 600 }}>Log In</Link>
-              <Link to="/register" className="btn btn-primary btn-sm">Sign Up</Link>
-            </>
+            <Link to="/login" className="nav-link" style={{ fontWeight: 600 }}>Log In</Link>
           )}
 
           {/* Hamburger */}
@@ -116,7 +126,6 @@ export default function Navbar() {
         {!isLoggedIn && (
           <div style={{ display: 'flex', gap: 12, paddingTop: 8 }}>
             <Link to="/login" className="btn btn-outline btn-full" onClick={() => setMobileOpen(false)}>Log In</Link>
-            <Link to="/register" className="btn btn-primary btn-full" onClick={() => setMobileOpen(false)}>Sign Up</Link>
           </div>
         )}
       </div>

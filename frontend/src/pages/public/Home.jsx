@@ -145,8 +145,8 @@ export default function Home() {
               <Link to="/courses" className="btn btn-accent btn-lg">
                 Explore Courses <ArrowRight size={18} />
               </Link>
-              <Link to="/register" className="btn btn-ghost btn-lg">
-                Start Free Trial
+              <Link to="/login" className="btn btn-ghost btn-lg">
+                Student Login
               </Link>
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function Home() {
             Join thousands of students who are cracking government exams with SV Logics.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/register" className="btn btn-accent btn-lg">Get Started Free</Link>
+            <Link to="/login" className="btn btn-accent btn-lg">Student Login</Link>
             <Link to="/courses" className="btn btn-ghost btn-lg">Browse Courses</Link>
           </div>
         </div>
