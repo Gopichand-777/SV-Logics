@@ -29,7 +29,7 @@ const swaggerDefinition = {
   },
   servers: [
     { url: `http://localhost:${PORT}/api`, description: 'Development' },
-    { url: 'https://svlogics-api.onrender.com/api', description: 'Production' },
+    { url: `${process.env.BACKEND_URL || 'https://your-api-domain.com'}/api`, description: 'Production' },
   ],
   components: {
     securitySchemes: {
@@ -212,8 +212,8 @@ const server = app.listen(PORT, () => {
   console.log(`   📖 API Docs     : http://localhost:${PORT}/api/docs`);
   console.log(`   ✅ Environment  : ${process.env.NODE_ENV}`);
   console.log(`   ✅ Database     : ${process.env.DATABASE_URL?.split('@')[1]}`);
-  console.log('\n   Frontend  → http://localhost:5173');
-  console.log('   Admin     → http://localhost:5174\n');
+  console.log('\n   Frontend  → ' + (process.env.FRONTEND_URL || 'http://localhost:PORT'));
+  console.log('   Admin     → ' + (process.env.ADMIN_URL    || 'http://localhost:PORT') + '\n');
 });
 
 server.on('error', (err) => {
