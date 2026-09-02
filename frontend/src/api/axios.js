@@ -2,8 +2,8 @@ import axios from 'axios';
 import { toast } from '../components/ui/toast.js';
 
 const api = axios.create({
-  // In dev: '/api' is proxied to localhost:3001 by Vite
-  // In prod: VITE_API_BASE_URL = https://svlogics-api.onrender.com/api
+  // In dev: '/api' is proxied to the backend server by Vite
+  // In prod: set VITE_API_BASE_URL in your environment variables
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
