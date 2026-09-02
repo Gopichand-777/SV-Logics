@@ -3,7 +3,7 @@ import {
   students, admins, contentManagers,
   courses, chapters, mockTests, questions, courseSubjects,
   enrollments, payments, testAttempts, attemptAnswers,
-  userStreaks, studyMaterials, announcements
+  userStreaks, studyMaterials, announcements, liveClasses
 } from '../db/schema.js';
 import { eq, desc, count, sum, and, like, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
@@ -139,6 +139,33 @@ export const deleteStudent = async (req, res) => {
   } catch (err) {
     console.error('Delete student error:', err.message);
     return res.status(500).json({ error: 'Could not delete student: ' + err.message });
+  }
+};
+
+export const resetStudentPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6)
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+
+    const studentId = parseInt(id);
+    const [student] = await db.select({ id: students.id, name: students.name })
+      .from(students).where(eq(students.id, studentId));
+    if (!student) return res.status(404).json({ error: 'Student not found.' });
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    // Also clear sessionToken so the student is forced to log in with the new password
+    await db.update(students)
+      .set({ passwordHash, sessionToken: null, updatedAt: new Date() })
+      .where(eq(students.id, studentId));
+
+    return res.json({ message: `Password reset for ${student.name}.` });
+  } catch (err) {
+    console.error('Reset student password error:', err);
+    return res.status(500).json({ error: 'Server error.' });
   }
 };
 
@@ -956,6 +983,137 @@ export const adminDeleteMaterial = async (req, res) => {
     await db.delete(studyMaterials).where(eq(studyMaterials.id, parseInt(req.params.id)));
     return res.json({ message: 'Material deleted.' });
   } catch (err) {
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+// ── LIVE CLASSES ──────────────────────────────────────────────────────────────
+
+/** GET /api/admin/live-classes  — admin list (all, newest first) */
+export const adminGetLiveClasses = async (req, res) => {
+  try {
+    const classes = await db
+      .select()
+      .from(liveClasses)
+      .orderBy(desc(liveClasses.scheduledAt));
+    return res.json({ liveClasses: classes });
+  } catch (err) {
+    console.error('adminGetLiveClasses error:', err);
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+/** POST /api/admin/live-classes */
+export const adminCreateLiveClass = async (req, res) => {
+  try {
+    const {
+      title, description, platform, meetingUrl,
+      scheduledAt, durationMinutes,
+      isRecurring, recurrenceRule, isActive,
+    } = req.body;
+
+    if (!title || !meetingUrl || !scheduledAt) {
+      return res.status(400).json({ error: 'Title, meeting URL, and scheduled time are required.' });
+    }
+    if (!['zoom', 'google_meet'].includes(platform)) {
+      return res.status(400).json({ error: 'Platform must be "zoom" or "google_meet".' });
+    }
+    // Basic URL validation
+    try { new URL(meetingUrl); } catch {
+      return res.status(400).json({ error: 'Meeting URL must be a valid URL.' });
+    }
+    if (isRecurring && !recurrenceRule) {
+      return res.status(400).json({ error: 'Recurrence rule is required for recurring classes.' });
+    }
+
+    const [created] = await db.insert(liveClasses).values({
+      title: title.trim(),
+      description: description?.trim() || null,
+      platform,
+      meetingUrl: meetingUrl.trim(),
+      scheduledAt: new Date(scheduledAt),
+      durationMinutes: durationMinutes ? parseInt(durationMinutes) : 60,
+      isRecurring: !!isRecurring,
+      recurrenceRule: isRecurring ? recurrenceRule.trim() : null,
+      isActive: isActive !== undefined ? !!isActive : true,
+      createdBy: req.user?.id || null,
+    }).returning();
+
+    return res.status(201).json({ message: 'Live class created!', liveClass: created });
+  } catch (err) {
+    console.error('adminCreateLiveClass error:', err);
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+/** PUT /api/admin/live-classes/:id */
+export const adminUpdateLiveClass = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const {
+      title, description, platform, meetingUrl,
+      scheduledAt, durationMinutes,
+      isRecurring, recurrenceRule, isActive,
+    } = req.body;
+
+    if (platform && !['zoom', 'google_meet'].includes(platform)) {
+      return res.status(400).json({ error: 'Platform must be "zoom" or "google_meet".' });
+    }
+    if (meetingUrl) {
+      try { new URL(meetingUrl); } catch {
+        return res.status(400).json({ error: 'Meeting URL must be a valid URL.' });
+      }
+    }
+
+    const updates = {};
+    if (title         !== undefined) updates.title           = title.trim();
+    if (description   !== undefined) updates.description     = description?.trim() || null;
+    if (platform      !== undefined) updates.platform        = platform;
+    if (meetingUrl    !== undefined) updates.meetingUrl      = meetingUrl.trim();
+    if (scheduledAt   !== undefined) updates.scheduledAt     = new Date(scheduledAt);
+    if (durationMinutes !== undefined) updates.durationMinutes = parseInt(durationMinutes);
+    if (isRecurring   !== undefined) updates.isRecurring     = !!isRecurring;
+    if (recurrenceRule !== undefined) updates.recurrenceRule = recurrenceRule?.trim() || null;
+    if (isActive      !== undefined) updates.isActive        = !!isActive;
+    updates.updatedAt = new Date();
+
+    const [updated] = await db
+      .update(liveClasses)
+      .set(updates)
+      .where(eq(liveClasses.id, id))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: 'Live class not found.' });
+    return res.json({ message: 'Live class updated!', liveClass: updated });
+  } catch (err) {
+    console.error('adminUpdateLiveClass error:', err);
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+/** DELETE /api/admin/live-classes/:id */
+export const adminDeleteLiveClass = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await db.delete(liveClasses).where(eq(liveClasses.id, id));
+    return res.json({ message: 'Live class deleted.' });
+  } catch (err) {
+    console.error('adminDeleteLiveClass error:', err);
+    return res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+/** GET /api/live-classes  — student-facing: active classes only, upcoming first */
+export const getLiveClasses = async (req, res) => {
+  try {
+    const classes = await db
+      .select()
+      .from(liveClasses)
+      .where(eq(liveClasses.isActive, true))
+      .orderBy(liveClasses.scheduledAt);
+    return res.json({ liveClasses: classes });
+  } catch (err) {
+    console.error('getLiveClasses error:', err);
     return res.status(500).json({ error: 'Server error.' });
   }
 };

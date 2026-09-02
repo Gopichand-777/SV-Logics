@@ -4,6 +4,7 @@ import { BookOpen, Users, Video, Award, ChevronRight, Zap, Target, Clock, Shield
 
 import { coursesApi } from '../../api/courses.api.js';
 import CourseCard from '../../components/ui/CourseCard.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 const EXAM_CATEGORIES = [
   {
@@ -67,6 +68,8 @@ export default function Home() {
   };
 
   const activeAnn = visibleAnn[currentAnnIdx] || visibleAnn[0] || null;
+
+  const { isLoggedIn } = useAuth();
 
   return (
     <div>
@@ -145,9 +148,16 @@ export default function Home() {
               <Link to="/courses" className="btn btn-accent btn-lg">
                 Explore Courses <ArrowRight size={18} />
               </Link>
-              <Link to="/login" className="btn btn-ghost btn-lg">
-                Student Login
-              </Link>
+              {!isLoggedIn && (
+                <Link to="/login" className="btn btn-ghost btn-lg">
+                  Student Login
+                </Link>
+              )}
+              {isLoggedIn && (
+                <Link to="/dashboard" className="btn btn-ghost btn-lg">
+                  Go to Dashboard
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -261,7 +271,11 @@ export default function Home() {
             Join thousands of students who are cracking government exams with SV Logics.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/login" className="btn btn-accent btn-lg">Student Login</Link>
+            {!isLoggedIn ? (
+              <Link to="/login" className="btn btn-accent btn-lg">Student Login</Link>
+            ) : (
+              <Link to="/dashboard" className="btn btn-accent btn-lg">Go to Dashboard</Link>
+            )}
             <Link to="/courses" className="btn btn-ghost btn-lg">Browse Courses</Link>
           </div>
         </div>

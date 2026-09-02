@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
 
 import authRoutes from './routes/auth.routes.js';
 import coursesRoutes from './routes/courses.routes.js';
@@ -10,13 +12,127 @@ import testsRoutes from './routes/tests.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import liveClassesRoutes from './routes/liveclasses.routes.js';
 import { pool } from './db/index.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// ── Swagger / OpenAPI Setup ───────────────────────────────────────────────────
+const swaggerDefinition = {
+  openapi: '3.0.0',
+  info: {
+    title: 'SV Logics API',
+    version: '1.0.0',
+    description: 'REST API for SV Logics — SSC & Banking Exam Prep Platform. Supports students, content managers, and super admins.',
+    contact: { name: 'SV Logics Team' },
+  },
+  servers: [
+    { url: `http://localhost:${PORT}/api`, description: 'Development' },
+    { url: 'https://svlogics-api.onrender.com/api', description: 'Production' },
+  ],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+    },
+    responses: {
+      Unauthorized: {
+        description: 'Missing or invalid JWT token',
+        content: { 'application/json': { schema: { type: 'object', properties: { error: { type: 'string' } } } } },
+      },
+      ServerError: {
+        description: 'Internal server error',
+        content: { 'application/json': { schema: { type: 'object', properties: { error: { type: 'string' } } } } },
+      },
+    },
+    schemas: {
+      Student: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          name: { type: 'string' },
+          username: { type: 'string' },
+          phone: { type: 'string' },
+          isActive: { type: 'boolean' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      Course: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          title: { type: 'string' },
+          slug: { type: 'string' },
+          description: { type: 'string' },
+          category: { type: 'string' },
+          price: { type: 'integer', description: 'Price in paise' },
+          isPublished: { type: 'boolean' },
+          thumbnailUrl: { type: 'string' },
+        },
+      },
+      MockTest: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          title: { type: 'string' },
+          durationMinutes: { type: 'integer' },
+          totalQuestions: { type: 'integer' },
+          difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
+          category: { type: 'string' },
+          subject: { type: 'string' },
+        },
+      },
+      LiveClass: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          title: { type: 'string' },
+          description: { type: 'string' },
+          platform: { type: 'string', enum: ['zoom', 'google_meet'] },
+          meetingUrl: { type: 'string', format: 'uri' },
+          scheduledAt: { type: 'string', format: 'date-time' },
+          durationMinutes: { type: 'integer' },
+          isRecurring: { type: 'boolean' },
+          recurrenceRule: { type: 'string', example: 'weekly:monday' },
+          isActive: { type: 'boolean' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      LiveClassInput: {
+        type: 'object',
+        required: ['title', 'platform', 'meetingUrl', 'scheduledAt'],
+        properties: {
+          title: { type: 'string' },
+          description: { type: 'string' },
+          platform: { type: 'string', enum: ['zoom', 'google_meet'] },
+          meetingUrl: { type: 'string', format: 'uri' },
+          scheduledAt: { type: 'string', format: 'date-time' },
+          durationMinutes: { type: 'integer', default: 60 },
+          isRecurring: { type: 'boolean', default: false },
+          recurrenceRule: { type: 'string', example: 'weekly:monday,wednesday' },
+          isActive: { type: 'boolean', default: true },
+        },
+      },
+    },
+  },
+};
+
+const swaggerOptions = {
+  swaggerDefinition,
+  apis: ['./src/routes/*.js'],
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
 // ── Security Middleware ───────────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  // Allow Swagger UI to load its inline scripts/styles
+  contentSecurityPolicy: false,
+}));
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -44,6 +160,13 @@ app.use('/api/auth/admin-login', authLimiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// ── Swagger UI ────────────────────────────────────────────────────────────────
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'SV Logics API Docs',
+  customCss: '.swagger-ui .topbar { background-color: #0f1f3d; } .swagger-ui .topbar-wrapper .link span { display: none; }',
+}));
+app.get('/api/docs.json', (req, res) => res.json(swaggerSpec));
+
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
   try {
@@ -54,6 +177,7 @@ app.get('/api/health', async (req, res) => {
       database: 'connected',
       uptime: Math.floor(process.uptime()),
       environment: process.env.NODE_ENV,
+      docs: `http://localhost:${PORT}/api/docs`,
     });
   } catch {
     res.status(503).json({ status: 'error', database: 'disconnected' });
@@ -61,12 +185,13 @@ app.get('/api/health', async (req, res) => {
 });
 
 // ── API Routes ────────────────────────────────────────────────────────────────
-app.use('/api/auth',      authRoutes);
-app.use('/api/courses',   coursesRoutes);
-app.use('/api/tests',     testsRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/payments',  paymentRoutes);
-app.use('/api/admin',     adminRoutes);
+app.use('/api/auth',          authRoutes);
+app.use('/api/courses',       coursesRoutes);
+app.use('/api/tests',         testsRoutes);
+app.use('/api/dashboard',     dashboardRoutes);
+app.use('/api/payments',      paymentRoutes);
+app.use('/api/admin',         adminRoutes);
+app.use('/api/live-classes',  liveClassesRoutes);
 
 // ── 404 Handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => {
@@ -84,6 +209,7 @@ const server = app.listen(PORT, () => {
   console.log('\n🚀 SV Logics API Server');
   console.log(`   ✅ Running on   : http://localhost:${PORT}`);
   console.log(`   ✅ Health check : http://localhost:${PORT}/api/health`);
+  console.log(`   📖 API Docs     : http://localhost:${PORT}/api/docs`);
   console.log(`   ✅ Environment  : ${process.env.NODE_ENV}`);
   console.log(`   ✅ Database     : ${process.env.DATABASE_URL?.split('@')[1]}`);
   console.log('\n   Frontend  → http://localhost:5173');

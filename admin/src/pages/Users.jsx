@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Search, UserCheck, UserX, Plus, Eye, EyeOff,
-  Copy, Check, X, BookOpen, Trash2, ShieldCheck, ShieldOff, GraduationCap,
+  Copy, Check, X, BookOpen, Trash2, ShieldCheck, ShieldOff, GraduationCap, KeyRound,
 } from 'lucide-react';
 import { adminApi } from '../api/admin.api.js';
 
@@ -306,6 +306,87 @@ function CredBanner({ name, username, password, onClose }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════ */
+/* Reset Password Modal                                                        */
+/* ══════════════════════════════════════════════════════════════════════════ */
+function ResetPasswordModal({ student, onClose, onSuccess }) {
+  const [newPassword, setNewPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr('');
+    if (newPassword.length < 6) return setErr('Password must be at least 6 characters.');
+    setBusy(true);
+    try {
+      await adminApi.resetStudentPassword(student.id, newPassword);
+      onSuccess(student.name);
+      onClose();
+    } catch (ex) {
+      setErr(ex.response?.data?.error || 'Failed to reset password.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return createPortal(
+    <div style={overlayBg}>
+      <div style={backdrop} onClick={onClose} />
+      <div style={{ ...card, width: '100%', maxWidth: 420, overflow: 'hidden', border: '1px solid rgba(245,158,11,0.25)' }}>
+
+        {/* Amber gradient header */}
+        <div style={{ background: 'linear-gradient(135deg,#d97706,#f59e0b)', padding: '20px 24px 18px', textAlign: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', border: '2px solid rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+            <KeyRound size={22} color="#fff" />
+          </div>
+          <h3 style={{ margin: 0, color: '#fff', fontWeight: 800, fontSize: '1rem' }}>Reset Password</h3>
+          <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.8rem' }}>
+            {student.name} &nbsp;<span style={{ fontFamily: 'monospace', opacity: 0.85 }}>@{student.username}</span>
+          </p>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '22px 24px 24px' }}>
+          {err && <div style={{ padding: '9px 14px', marginBottom: 14, borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontSize: '0.84rem' }}>{err}</div>}
+          <form onSubmit={submit}>
+            <label style={{ display: 'block', marginBottom: 6, color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', fontWeight: 600 }}>New Password</label>
+            <div style={{ position: 'relative', marginBottom: 18 }}>
+              <input
+                style={{ ...inp, paddingRight: 42 }}
+                type={showPwd ? 'text' : 'password'}
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Min. 6 characters"
+                required minLength={6} autoFocus
+              />
+              <button type="button" onClick={() => setShowPwd(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex' }}>
+                {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <p style={{ margin: '0 0 18px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
+              ⚠️ The student will be logged out of all devices and must sign in with the new password.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button type="button" onClick={onClose} style={{ flex: 1, padding: '11px 0', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              <button type="submit" disabled={busy} style={{ flex: 1, padding: '11px 0', background: busy ? '#1e293b' : 'linear-gradient(135deg,#d97706,#f59e0b)', border: 'none', borderRadius: 9, color: 'white', fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: busy ? 'none' : '0 4px 14px rgba(245,158,11,0.35)' }}>
+                {busy ? <><div style={spin} /> Resetting…</> : <><KeyRound size={14} /> Reset Password</>}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════ */
 /* Main Page                                                                   */
 /* ══════════════════════════════════════════════════════════════════════════ */
 export default function AdminStudents() {
@@ -318,6 +399,7 @@ export default function AdminStudents() {
   const [accessSt, setAccessSt] = useState(null);
   const [delTarget, setDelTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [resetTarget, setResetTarget] = useState(null);
 
   const showToast = (text, type = 'success') => { setToast({ text, type }); setTimeout(() => setToast({ text: '', type: 'success' }), 3000); };
 
@@ -437,6 +519,9 @@ export default function AdminStudents() {
                     <button onClick={() => setAccessSt(s)} title="Manage Course Access" style={{ padding: '6px 11px', borderRadius: 7, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', color: '#818cf8', fontSize: '0.77rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
                       <BookOpen size={13} /> Access
                     </button>
+                    <button onClick={() => setResetTarget(s)} title="Reset Password" style={{ width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24', cursor: 'pointer' }}>
+                      <KeyRound size={14} />
+                    </button>
                     <button onClick={() => toggleStatus(s)} title={s.isActive !== false ? 'Deactivate' : 'Activate'} style={{ width: 32, height: 32, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
                       {s.isActive !== false ? <UserX size={14} /> : <UserCheck size={14} />}
                     </button>
@@ -457,6 +542,7 @@ export default function AdminStudents() {
       )}
       {accessSt && <CourseAccessModal student={accessSt} onClose={() => setAccessSt(null)} />}
       {delTarget && <DeleteConfirm name={delTarget.name} username={delTarget.username} onConfirm={doDelete} onCancel={() => setDelTarget(null)} loading={deleting} />}
+      {resetTarget && <ResetPasswordModal student={resetTarget} onClose={() => setResetTarget(null)} onSuccess={(name) => showToast(`Password reset for ${name}.`)} />}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, GraduationCap, FileText,
-  HelpCircle, CreditCard, ClipboardList, LogOut, Sun, Moon, Megaphone, BookOpen, Shield
+  HelpCircle, CreditCard, ClipboardList, LogOut, Sun, Moon, Megaphone, BookOpen, Shield, Video
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
@@ -35,6 +35,7 @@ const NAV_SECTIONS = [
     label: 'Communication',
     links: [
       { to: '/announcements', icon: <Megaphone size={17} />, label: 'Announcements' },
+      { to: '/live-classes',  icon: <Video size={17} />,    label: 'Live Classes' },
     ],
   },
 ];

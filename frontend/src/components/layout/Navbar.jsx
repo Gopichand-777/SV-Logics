@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sun, Moon, Menu, X, User, LogOut, LayoutDashboard, FileText } from 'lucide-react';
+import { Sun, Moon, Menu, X, User, LogOut, LayoutDashboard, FileText, Video } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
+import { liveClassesApi } from '../../api/liveclasses.api.js';
 
 
 export default function Navbar() {
@@ -12,7 +13,32 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [hasLiveNow, setHasLiveNow] = useState(false);
   const menuRef = useRef(null);
+
+  // Detect if any class is currently live
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const check = async () => {
+      try {
+        const res = await liveClassesApi.getAll();
+        const classes = res.data.liveClasses || [];
+        const now = new Date();
+        const live = classes.some((cls) => {
+          const start = new Date(cls.scheduledAt);
+          const end = new Date(start.getTime() + cls.durationMinutes * 60 * 1000);
+          return now >= start && now <= end;
+        });
+        setHasLiveNow(live);
+      } catch {
+        // silently fail — non-critical
+      }
+    };
+    check();
+    // Re-check every 2 minutes
+    const interval = setInterval(check, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -45,6 +71,14 @@ export default function Navbar() {
         <div className="nav-links">
           <Link to="/courses" className="nav-link">Courses</Link>
           {isLoggedIn && <Link to="/tests" className="nav-link">Mock Tests</Link>}
+          {isLoggedIn && (
+            <Link to="/live-classes" className="nav-link" id="nav-live-class-link"
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {hasLiveNow && <span className="live-nav-dot" />}
+              <Video size={15} style={{ opacity: 0.85 }} />
+              Live Class
+            </Link>
+          )}
         </div>
 
         {/* Actions */}
@@ -80,6 +114,12 @@ export default function Navbar() {
                     style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', color: 'var(--color-text)', fontSize: '0.9rem', borderBottom: '1px solid var(--color-border)' }}>
                      <FileText size={16} />Mock Tests
                   </Link>
+                  <Link to="/live-classes" className="dropdown-item" onClick={() => setUserMenuOpen(false)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', color: 'var(--color-text)', fontSize: '0.9rem', borderBottom: '1px solid var(--color-border)' }}>
+                     <Video size={16} />
+                     Live Classes
+                     {hasLiveNow && <span className="live-nav-dot" style={{ marginLeft: 'auto' }} />}
+                  </Link>
                   <Link to="/profile" className="dropdown-item" onClick={() => setUserMenuOpen(false)}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', color: 'var(--color-text)', fontSize: '0.9rem', borderBottom: '1px solid var(--color-border)' }}>
                      <User size={16} />Profile
@@ -114,6 +154,12 @@ export default function Navbar() {
             </Link>
             <Link to="/tests" className="nav-link" onClick={() => setMobileOpen(false)} style={{ padding: '12px 8px', borderBottom: '1px solid var(--color-border)' }}>
               Mock Tests
+            </Link>
+            <Link to="/live-classes" className="nav-link" onClick={() => setMobileOpen(false)}
+              style={{ padding: '12px 8px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Video size={15} />
+              Live Class
+              {hasLiveNow && <span className="live-nav-dot" />}
             </Link>
             <Link to="/profile" className="nav-link" onClick={() => setMobileOpen(false)} style={{ padding: '12px 8px', borderBottom: '1px solid var(--color-border)' }}>
               Profile

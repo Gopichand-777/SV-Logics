@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Mail, Phone } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
 import { coursesApi } from '../../api/courses.api.js';
 
 // ── Site config — edit once, reflects everywhere ──────────────────────────────
@@ -45,7 +45,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="footer-logo flex" style={{ gap: 10, marginBottom: 12 }}>
-              <BookOpen size={22} color="#f59e0b" />
+              <img src="/logo.png" alt="SV Logics" style={{ width: 26, height: 26, objectFit: 'contain', borderRadius: '50%' }} />
               <span>{SITE.name}</span>
             </div>
             <p className="footer-desc">{SITE.tagline}</p>

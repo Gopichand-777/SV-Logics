@@ -1,6 +1,7 @@
 import { db } from '../db/index.js';
-import { mockTests, questions, testAttempts, attemptAnswers, userStreaks } from '../db/schema.js';
+import { mockTests, questions, testAttempts, attemptAnswers } from '../db/schema.js';
 import { eq, and, desc, sql } from 'drizzle-orm';
+import { updateStreak } from '../utils/streak.util.js';
 
 export const getTests = async (req, res) => {
   try {
@@ -197,29 +198,3 @@ export const getAttemptHistory = async (req, res) => {
     return res.status(500).json({ error: 'Server error.' });
   }
 };
-
-async function updateStreak(studentId) {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const [streak] = await db.select().from(userStreaks).where(eq(userStreaks.studentId, studentId));
-
-    if (!streak) {
-      await db.insert(userStreaks).values({ studentId, currentStreak: 1, longestStreak: 1, lastActive: today });
-      return;
-    }
-
-    const lastDate = streak.lastActive;
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-    let newStreak = 1;
-    if (lastDate === today) return; // Already active today
-    if (lastDate === yesterday) newStreak = streak.currentStreak + 1;
-
-    const longest = Math.max(newStreak, streak.longestStreak);
-    await db.update(userStreaks)
-      .set({ currentStreak: newStreak, longestStreak: longest, lastActive: today })
-      .where(eq(userStreaks.studentId, studentId));
-  } catch (e) {
-    console.error('Streak update error:', e);
-  }
-}

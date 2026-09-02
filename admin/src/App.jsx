@@ -12,6 +12,7 @@ import AdminEnrollments from './pages/Enrollments.jsx';
 import AdminPayments from './pages/Payments.jsx';
 import AdminAnnouncements from './pages/Announcements.jsx';
 import AdminMaterials from './pages/Materials.jsx';
+import AdminLiveClasses from './pages/LiveClasses.jsx';
 
 const ProtectedRoute = ({ children, superOnly }) => {
   const { admin, loading, isSuperAdmin } = useAuth();
@@ -46,6 +47,7 @@ export default function App() {
       <Route path="/questions" element={<ProtectedRoute><AdminLayout><AdminQuestions /></AdminLayout></ProtectedRoute>} />
       <Route path="/materials" element={<ProtectedRoute><AdminLayout><AdminMaterials /></AdminLayout></ProtectedRoute>} />
       <Route path="/announcements" element={<ProtectedRoute><AdminLayout><AdminAnnouncements /></AdminLayout></ProtectedRoute>} />
+      <Route path="/live-classes"   element={<ProtectedRoute><AdminLayout><AdminLiveClasses /></AdminLayout></ProtectedRoute>} />
       <Route path="/users" element={<ProtectedRoute superOnly><AdminLayout><AdminStudents /></AdminLayout></ProtectedRoute>} />
       <Route path="/staff" element={<ProtectedRoute superOnly><AdminLayout><AdminStaff /></AdminLayout></ProtectedRoute>} />
       <Route path="/enrollments" element={<ProtectedRoute superOnly><AdminLayout><AdminEnrollments /></AdminLayout></ProtectedRoute>} />

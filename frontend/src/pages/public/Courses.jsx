@@ -1,19 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search } from 'lucide-react';
 
 import { coursesApi } from '../../api/courses.api.js';
 import CourseCard from '../../components/ui/CourseCard.jsx';
 import { useSearchParams } from 'react-router-dom';
 
-const CATEGORIES = ['All Courses', 'SSC CGL', 'SSC MTS', 'SSC CHSL', 'Banking (IBPS/SBI)'];
-
 export default function Courses() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState([]);
+  const [allCourses, setAllCourses] = useState([]); // full list for category derivation
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(searchParams.get('category') || 'All Courses');
+
+  // Derive unique category tabs from the full course list (dynamic, not hardcoded)
+  const categories = useMemo(() => {
+    const unique = [...new Set(allCourses.map(c => c.category).filter(Boolean))].sort();
+    return ['All Courses', ...unique];
+  }, [allCourses]);
+
+  // Fetch full list once on mount for category derivation
+  useEffect(() => {
+    coursesApi.getAll({})
+      .then(res => setAllCourses(res.data.courses || []))
+      .catch(() => setAllCourses([]));
+  }, []);
 
   const fetchCourses = (cat, q) => {
     setLoading(true);
@@ -21,7 +33,7 @@ export default function Courses() {
     if (cat && cat !== 'All Courses') params.category = cat;
     if (q) params.search = q;
     coursesApi.getAll(params)
-      .then(res => setCourses(res.data.courses))
+      .then(res => setCourses(res.data.courses || []))
       .catch(() => setCourses([]))
       .finally(() => setLoading(false));
   };
@@ -70,9 +82,9 @@ export default function Courses() {
       {/* Content */}
       <div className="section">
         <div className="container">
-          {/* Filter Tabs */}
+          {/* Filter Tabs — dynamically built from fetched course categories */}
           <div className="filter-tabs" style={{ marginBottom: 40 }}>
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button
                 key={cat}
                 className={`filter-tab ${activeCategory === cat ? 'active' : ''}`}
@@ -81,6 +93,12 @@ export default function Courses() {
                 {cat}
               </button>
             ))}
+            {/* Skeleton tabs while categories haven't loaded yet */}
+            {categories.length === 1 && (
+              [1, 2, 3].map(i => (
+                <div key={i} className="skeleton" style={{ width: 100, height: 38, borderRadius: 99 }} />
+              ))
+            )}
           </div>
 
           {loading ? (

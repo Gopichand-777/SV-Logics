@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import { updateStreak } from '../utils/streak.util.js';
 
 // sessionToken is embedded in JWT and also stored in DB.
 // On each request, middleware checks they match — if they differ,
@@ -49,6 +50,10 @@ export const login = async (req, res) => {
       .where(eq(students.id, student.id));
 
     const token = signStudentToken(student, sessionToken);
+
+    // Update day streak — fire-and-forget, non-blocking
+    updateStreak(student.id).catch(() => {});
+
     return res.status(200).json({
       message: 'Login successful!',
       token,
@@ -118,6 +123,10 @@ export const getMe = async (req, res) => {
     if (tableSource === 'student') {
       const [s] = await db.select({ id: students.id, name: students.name, username: students.username, phone: students.phone, isActive: students.isActive, createdAt: students.createdAt }).from(students).where(eq(students.id, id));
       if (!s) return res.status(404).json({ error: 'Student not found.' });
+
+      // Update day streak on every app-load (idempotent — skips if already counted today)
+      updateStreak(id).catch(() => {});
+
       return res.json({ user: { ...s, tableSource: 'student' } });
     }
     const table = role === 'super_admin' ? admins : contentManagers;

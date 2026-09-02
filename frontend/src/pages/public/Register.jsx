@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, BookOpen, User, Mail, Phone, Lock } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Phone, Lock } from 'lucide-react';
 import { authApi } from '../../api/auth.api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -38,7 +38,7 @@ export default function Register() {
       <div className="auth-left">
         <div>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'white', fontWeight: 800, fontSize: '1.2rem' }}>
-            <BookOpen size={24} color="#f59e0b" /> SV Logics
+            <img src="/logo.png" alt="SV Logics" style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: '50%' }} /> SV Logics
           </Link>
         </div>
         <div>

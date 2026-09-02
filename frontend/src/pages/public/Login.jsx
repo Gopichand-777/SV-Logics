@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, BookOpen, User, Lock } from 'lucide-react';
+import { Eye, EyeOff, User, Lock } from 'lucide-react';
 import { authApi } from '../../api/auth.api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
@@ -37,12 +37,12 @@ export default function Login() {
       <div className="auth-left">
         <div>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'white', fontWeight: 800, fontSize: '1.2rem' }}>
-            <BookOpen size={24} color="#f59e0b" /> SV Logics
+            <img src="/logo.png" alt="SV Logics" style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: '50%' }} /> SV Logics
           </Link>
         </div>
         <div>
           <p className="auth-quote">"Success is where preparation and opportunity meet."</p>
-          <p className="auth-quote-author">— Bobby Unser</p>
+          <p className="auth-quote-author">— SV Logics</p>
         </div>
         <p className="auth-trusted">Trusted by 50,000+ students across India</p>
       </div>

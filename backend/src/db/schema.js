@@ -214,3 +214,26 @@ export const announcements = pgTable('announcements', {
   createdBy: integer('created_by').references(() => admins.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// ─── LIVE CLASSES ─────────────────────────────────────────────────────────────
+// Created by content managers or super admins. Supports one-time and recurring.
+export const liveClasses = pgTable('live_classes', {
+  id:              serial('id').primaryKey(),
+  title:           varchar('title',         { length: 500 }).notNull(),
+  description:     text('description'),
+  // Platform: 'zoom' | 'google_meet'
+  platform:        varchar('platform',      { length: 50  }).notNull().default('zoom'),
+  meetingUrl:      text('meeting_url').notNull(),
+  // scheduledAt: start datetime for one-time events; first occurrence for recurring
+  scheduledAt:     timestamp('scheduled_at').notNull(),
+  durationMinutes: integer('duration_minutes').default(60).notNull(),
+  // Recurring support
+  isRecurring:     boolean('is_recurring').default(false).notNull(),
+  // e.g. "weekly:monday" or "weekly:tuesday,thursday"
+  recurrenceRule:  varchar('recurrence_rule', { length: 100 }),
+  // Admin publish toggle — false = draft, true = visible to students
+  isActive:        boolean('is_active').default(true).notNull(),
+  createdBy:       integer('created_by').references(() => admins.id),
+  createdAt:       timestamp('created_at').defaultNow().notNull(),
+  updatedAt:       timestamp('updated_at').defaultNow().notNull(),
+});
