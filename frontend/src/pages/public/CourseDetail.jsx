@@ -212,8 +212,8 @@ function CourseSidebar({ grouped, chapters, activeId, onSelect }) {
                 </span>
               </div>
               {isOpen
-                ? <ChevronUp size={13} color="rgba(255,255,255,.25)" />
-                : <ChevronDown size={13} color="rgba(255,255,255,.25)" />}
+                ? <ChevronUp size={13} color="var(--cd-player-chevron)" />
+                : <ChevronDown size={13} color="var(--cd-player-chevron)" />}
             </button>
 
             {/* Chapter list */}
@@ -229,23 +229,23 @@ function CourseSidebar({ grouped, chapters, activeId, onSelect }) {
                   <div
                     className="cd-ch-btn-icon"
                     style={{
-                      background: active ? c.b : 'rgba(255,255,255,.04)',
-                      border:     `1px solid ${active ? c.d : 'rgba(255,255,255,.07)'}`,
+                      background: active ? c.b : 'var(--cd-player-surface)',
+                      border:     `1px solid ${active ? c.d : 'var(--cd-player-border-md)'}`,
                       boxShadow:  active ? `0 0 8px ${c.g}` : 'none',
                     }}
                   >
                     {active
                       ? <Play size={11} color={c.a} style={{ fill: c.a }} />
                       : ch.videoUrl
-                        ? <Play size={10} color="rgba(255,255,255,.3)" />
-                        : <FileText size={10} color="rgba(255,255,255,.2)" />}
+                        ? <Play size={10} color="var(--cd-player-text-faint)" />
+                        : <FileText size={10} color="var(--cd-player-text-faint)" />}
                   </div>
                   <div className="cd-ch-btn-text-wrap">
-                    <p className="cd-ch-btn-title" style={{ fontWeight: active ? 700 : 500, color: active ? '#fff' : 'rgba(255,255,255,.48)' }}>
+                    <p className="cd-ch-btn-title" style={{ fontWeight: active ? 700 : 500, color: active ? 'var(--cd-player-text)' : 'var(--cd-player-text-muted)' }}>
                       {ch.title}
                     </p>
                     {ch.durationMin > 0 && (
-                      <p className="cd-ch-btn-dur" style={{ color: active ? c.a : 'rgba(255,255,255,.2)' }}>
+                      <p className="cd-ch-btn-dur" style={{ color: active ? c.a : 'var(--cd-player-text-faint)' }}>
                         {ch.durationMin} min
                       </p>
                     )}
