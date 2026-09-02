@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, AlertCircle, X } from 'lucide-react';
 import { testsApi } from '../../api/tests.api.js';
+import { toast } from '../../components/ui/toast.js';
 
 
 export default function TestSession() {
@@ -67,7 +68,7 @@ export default function TestSession() {
       const { data } = await testsApi.submit(id, { answers: answerList, timeTakenSec });
       navigate(`/tests/result/${data.attempt.id}`);
     } catch (err) {
-      alert('Submission failed. Please try again.');
+      toast.error('Submission failed. Please try again.');
       setSubmitting(false);
     }
   };

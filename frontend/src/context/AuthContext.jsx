@@ -40,7 +40,11 @@ export const AuthProvider = ({ children }) => {
   const forceLogout = (message) => {
     localStorage.removeItem('svlogics-token');
     setUser(null);
-    if (message) alert(`⚠️ ${message}`);
+    if (message) {
+      import('../components/ui/toast.js').then(({ toast }) => {
+        toast.warning(message);
+      });
+    }
   };
 
   const isAdmin = user?.role === 'super_admin' || user?.role === 'content_manager';

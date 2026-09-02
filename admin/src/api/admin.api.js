@@ -21,7 +21,13 @@ api.interceptors.response.use(
       const errCode = err.response.data?.error;
       localStorage.removeItem('svlogics-admin-token');
       if (errCode === 'SESSION_INVALIDATED') {
-        alert('⚠️ Your admin account was logged in from another device. You have been logged out.');
+        // Import toast lazily to avoid circular deps — Toast is mounted in main.jsx
+        import('../components/toast.js').then(({ toast }) => {
+          toast.warning('Your admin account was logged in from another device. You have been logged out.');
+        });
+        // Small delay so toast renders before redirect
+        setTimeout(() => { window.location.href = '/login'; }, 1800);
+        return Promise.reject(err);
       }
       window.location.href = '/login';
     }
@@ -38,6 +44,7 @@ export const adminApi = {
   getStudents: (params) => api.get('/admin/students', { params }),
   createStudent: (data) => api.post('/admin/students', data),
   updateStudentStatus: (id, isActive) => api.patch(`/admin/students/${id}/status`, { isActive }),
+  resetStudentPassword: (id, newPassword) => api.patch(`/admin/students/${id}/reset-password`, { newPassword }),
   deleteStudent: (id) => api.delete(`/admin/students/${id}`),
 
   // Student course access (admin grant/revoke)
@@ -94,6 +101,12 @@ export const adminApi = {
   getMaterials:   () =>         api.get('/admin/materials'),
   addMaterial:    (data) =>     api.post('/admin/materials', data),
   deleteMaterial: (id) =>       api.delete(`/admin/materials/${id}`),
+
+  // Live Classes
+  getLiveClasses:   ()          => api.get('/admin/live-classes'),
+  createLiveClass:  (data)      => api.post('/admin/live-classes', data),
+  updateLiveClass:  (id, data)  => api.put(`/admin/live-classes/${id}`, data),
+  deleteLiveClass:  (id)        => api.delete(`/admin/live-classes/${id}`),
 
   // File Upload (R2 presigned PUT URL)
   // Returns { uploadUrl, key } — browser uploads directly to R2 using uploadUrl

@@ -15,34 +15,30 @@ export const getCourses = async (req, res) => {
   try {
     const { category, search, featured } = req.query;
 
-    // Build WHERE clauses as raw SQL fragments
-    const clauses = [`c.is_published = true`];
-    const params  = [];
+    // Build the query using drizzle's sql tagged template so every ${value}
+    // is bound as a safe query parameter (prevents SQL injection).
+    // sql.raw() is used ONLY for hard-coded SQL identifiers/fragments.
+    let query = sql`
+      SELECT c.*,
+             (SELECT COUNT(*) FROM chapters ch WHERE ch.course_id = c.id)::int AS chapters_count
+      FROM   courses c
+      WHERE  c.is_published = true
+    `;
 
-    if (category && category !== 'All') {
-      params.push(category);
-      clauses.push(`c.category = $${params.length}`);
+    // Append optional filter clauses — each ${value} is safely parameterised
+    if (category && category !== 'All Courses' && category !== 'All') {
+      query = sql`${query} AND c.category = ${category}`;
     }
     if (search) {
-      params.push(`%${search}%`);
-      clauses.push(`c.title ILIKE $${params.length}`);
+      query = sql`${query} AND c.title ILIKE ${'%' + search + '%'}`;
     }
     if (featured === 'true') {
-      clauses.push(`c.is_featured = true`);
+      query = sql`${query} AND c.is_featured = true`;
     }
 
-    const where = clauses.join(' AND ');
+    query = sql`${query} ORDER BY c.created_at DESC`;
 
-    // Raw SQL with a correlated subquery — column names are identifiers, not params
-    const { rows } = await db.execute(
-      sql.raw(
-        `SELECT c.*,
-                (SELECT COUNT(*) FROM chapters ch WHERE ch.course_id = c.id)::int AS chapters_count
-         FROM   courses c
-         WHERE  ${where}`,
-        params
-      )
-    );
+    const { rows } = await db.execute(query);
 
     // Normalise snake_case → camelCase for the fields the frontend uses
     const normalised = rows.map(r => ({
@@ -63,6 +59,7 @@ export const getCourses = async (req, res) => {
     return res.status(500).json({ error: 'Server error.' });
   }
 };
+
 
 export const getCourseById = async (req, res) => {
   try {

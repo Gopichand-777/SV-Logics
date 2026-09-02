@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from '../components/ui/toast.js';
 
 const api = axios.create({
   // In dev: '/api' is proxied to localhost:3001 by Vite
@@ -23,8 +24,10 @@ api.interceptors.response.use(
       const errCode = error.response.data?.error;
       localStorage.removeItem('svlogics-token');
       if (errCode === 'SESSION_INVALIDATED') {
-        // Another device logged in — show clear message
-        alert('⚠️ Your account was logged in from another device. You have been logged out.');
+        // Show themed toast, then redirect after a short delay so the user can read it
+        toast.warning('Your account was logged in from another device. You have been logged out.');
+        setTimeout(() => { window.location.href = '/login'; }, 2000);
+        return Promise.reject(error);
       }
       window.location.href = '/login';
     }

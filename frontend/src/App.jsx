@@ -13,6 +13,7 @@ import Tests from './pages/student/Tests.jsx';
 import TestSession from './pages/student/TestSession.jsx';
 import TestResult from './pages/student/TestResult.jsx';
 import Profile from './pages/student/Profile.jsx';
+import LiveClasses from './pages/student/LiveClasses.jsx';
 
 const ProtectedRoute = ({ children }) => {
   const { isLoggedIn, loading } = useAuth();
@@ -55,7 +56,8 @@ export default function App() {
       <Route path="/tests" element={<ProtectedRoute><PageLayout><Tests /></PageLayout></ProtectedRoute>} />
       <Route path="/tests/:id/session" element={<ProtectedRoute><TestSession /></ProtectedRoute>} />
       <Route path="/tests/result/:attemptId" element={<ProtectedRoute><PageLayout><TestResult /></PageLayout></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute><PageLayout><Profile /></PageLayout></ProtectedRoute>} />
+      <Route path="/profile"    element={<ProtectedRoute><PageLayout><Profile /></PageLayout></ProtectedRoute>} />
+      <Route path="/live-classes" element={<ProtectedRoute><PageLayout><LiveClasses /></PageLayout></ProtectedRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />

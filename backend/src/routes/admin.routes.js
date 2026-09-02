@@ -4,7 +4,7 @@ import { requireAdmin, requireSuperAdmin } from '../middleware/admin.middleware.
 import { generatePresignedPutUrl } from '../controllers/upload.controller.js';
 import {
   getOverview,
-  getStudents, createStudent, updateStudentStatus, deleteStudent,
+  getStudents, createStudent, updateStudentStatus, deleteStudent, resetStudentPassword,
   adminGetStudentCourses, adminGrantCourseAccess, adminRevokeCourseAccess,
   getAdminStaff, createAdminStaff, updateAdminStaffStatus, deleteAdminStaff,
   adminGetCourses, adminCreateCourse, adminUpdateCourse, adminDeleteCourse,
@@ -15,6 +15,7 @@ import {
   adminGetEnrollments, adminGetPayments,
   adminGetAnnouncements, adminCreateAnnouncement,
   adminGetMaterials, adminAddMaterial, adminDeleteMaterial,
+  adminGetLiveClasses, adminCreateLiveClass, adminUpdateLiveClass, adminDeleteLiveClass,
 } from '../controllers/admin.controller.js';
 
 const router = Router();
@@ -28,6 +29,7 @@ router.get('/overview', requireSuperAdmin, getOverview);
 router.get('/students', requireSuperAdmin, getStudents);
 router.post('/students', requireSuperAdmin, createStudent);
 router.patch('/students/:id/status', requireSuperAdmin, updateStudentStatus);
+router.patch('/students/:id/reset-password', requireSuperAdmin, resetStudentPassword);
 router.delete('/students/:id', requireSuperAdmin, deleteStudent);
 
 // Student course access management (super admin only)
@@ -89,6 +91,73 @@ router.delete('/materials/:id', adminDeleteMaterial);
 // File never touches Render server; browser uploads directly to Cloudflare R2
 // Restricted to super_admin only — content managers cannot upload files
 router.post('/upload/presign', requireSuperAdmin, generatePresignedPutUrl);
+
+/**
+ * @swagger
+ * /admin/live-classes:
+ *   get:
+ *     summary: List all live classes (admin)
+ *     tags: [Admin - Live Classes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All live classes
+ *   post:
+ *     summary: Create a live class
+ *     tags: [Admin - Live Classes]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LiveClassInput'
+ *     responses:
+ *       201:
+ *         description: Created
+ *
+ * /admin/live-classes/{id}:
+ *   put:
+ *     summary: Update a live class
+ *     tags: [Admin - Live Classes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LiveClassInput'
+ *     responses:
+ *       200:
+ *         description: Updated
+ *   delete:
+ *     summary: Delete a live class
+ *     tags: [Admin - Live Classes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Deleted
+ */
+// Live Classes (content manager + super admin)
+router.get('/live-classes',     adminGetLiveClasses);
+router.post('/live-classes',    adminCreateLiveClass);
+router.put('/live-classes/:id', adminUpdateLiveClass);
+router.delete('/live-classes/:id', adminDeleteLiveClass);
 
 export default router;
 
