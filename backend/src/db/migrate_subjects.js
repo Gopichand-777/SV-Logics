@@ -6,7 +6,9 @@
  * Run ONCE after applying the Drizzle migration:
  *   node src/db/migrate_subjects.js
  */
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: `.env.${process.env.NODE_ENV || 'development'}` });
+
 import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { sql } from 'drizzle-orm';

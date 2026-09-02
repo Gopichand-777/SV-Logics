@@ -62,17 +62,25 @@
   --cd-enroll-from:        #060a1c;
   --cd-enroll-to:          #0d1840;
 
-  /* ── Player / Overlay (always dark, no light variant needed) ─────────── */
-  --cd-player-bg:          #06091a;
-  --cd-player-bar-bg:      rgba(6, 9, 26, 0.97);
-  --cd-player-info-bg:     #07102a;
-  --cd-player-sidebar-bg:  #07101f;
-  --cd-player-text:        #e2e8f0;
-  --cd-player-text-muted:  rgba(255, 255, 255, 0.48);
-  --cd-player-text-faint:  rgba(255, 255, 255, 0.28);
-  --cd-player-divider:     rgba(255, 255, 255, 0.04);
-  --cd-player-surface:     rgba(255, 255, 255, 0.04);
-  --cd-player-surface-sm:  rgba(255, 255, 255, 0.025);
+  /* ── Player / Overlay (light-mode defaults) ─────────────────────────── */
+  --cd-player-bg:           #f8fafc;
+  --cd-player-bar-bg:       rgba(248, 250, 252, 0.97);
+  --cd-player-info-bg:      #ffffff;
+  --cd-player-sidebar-bg:   #f1f5f9;
+  --cd-player-text:         #111827;
+  --cd-player-text-muted:   rgba(0, 0, 0, 0.55);
+  --cd-player-text-faint:   rgba(0, 0, 0, 0.35);
+  --cd-player-divider:      rgba(0, 0, 0, 0.05);
+  --cd-player-surface:      rgba(0, 0, 0, 0.04);
+  --cd-player-surface-sm:   rgba(0, 0, 0, 0.025);
+  --cd-player-border-soft:  rgba(0, 0, 0, 0.06);
+  --cd-player-border-md:    rgba(0, 0, 0, 0.09);
+  --cd-player-border-lg:    rgba(0, 0, 0, 0.13);
+  --cd-player-hover:        rgba(0, 0, 0, 0.03);
+  --cd-player-hover-sm:     rgba(0, 0, 0, 0.02);
+  --cd-player-chevron:      rgba(0, 0, 0, 0.30);
+  --cd-player-title-from:   #111827;
+  --cd-player-title-to:     var(--cd-primary);
 
   /* ── Shadows ─────────────────────────────────────────────────────────── */
   --cd-shadow-card:        0 8px 28px rgba(0, 0, 0, 0.08);
@@ -102,6 +110,26 @@
   --cd-shadow-card:        var(--cd-shadow-card-dark);
   --cd-shadow-subj:        var(--cd-shadow-subj-dark);
   --cd-shadow-enroll:      var(--cd-shadow-enroll-dark);
+
+  /* ── Player / Overlay (dark-mode overrides) ──────────────────────────── */
+  --cd-player-bg:           #06091a;
+  --cd-player-bar-bg:       rgba(6, 9, 26, 0.97);
+  --cd-player-info-bg:      #07102a;
+  --cd-player-sidebar-bg:   #07101f;
+  --cd-player-text:         #e2e8f0;
+  --cd-player-text-muted:   rgba(255, 255, 255, 0.48);
+  --cd-player-text-faint:   rgba(255, 255, 255, 0.28);
+  --cd-player-divider:      rgba(255, 255, 255, 0.04);
+  --cd-player-surface:      rgba(255, 255, 255, 0.04);
+  --cd-player-surface-sm:   rgba(255, 255, 255, 0.025);
+  --cd-player-border-soft:  rgba(255, 255, 255, 0.04);
+  --cd-player-border-md:    rgba(255, 255, 255, 0.07);
+  --cd-player-border-lg:    rgba(255, 255, 255, 0.08);
+  --cd-player-hover:        rgba(255, 255, 255, 0.03);
+  --cd-player-hover-sm:     rgba(255, 255, 255, 0.02);
+  --cd-player-chevron:      rgba(255, 255, 255, 0.25);
+  --cd-player-title-from:   #ffffff;
+  --cd-player-title-to:     var(--cd-primary-light);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -128,8 +156,8 @@
 /* Custom scrollbar — applies to elements with .cd-s */
 .cd-s::-webkit-scrollbar              { width: 5px; }
 .cd-s::-webkit-scrollbar-track        { background: transparent; }
-.cd-s::-webkit-scrollbar-thumb        { background: rgba(255,255,255,.10); border-radius: 10px; }
-.cd-s::-webkit-scrollbar-thumb:hover  { background: rgba(255,255,255,.20); }
+.cd-s::-webkit-scrollbar-thumb        { background: var(--cd-player-border-lg); border-radius: 10px; }
+.cd-s::-webkit-scrollbar-thumb:hover  { background: var(--cd-player-chevron); }
 
 /* Spinner */
 .cd-spin { animation: cd-spin 0.8s linear infinite; }
@@ -173,13 +201,13 @@
 .cd-bar-divider {
   width: 1px;
   height: 22px;
-  background: rgba(255,255,255,.08);
+  background: var(--cd-player-border-lg);
   flex-shrink: 0;
 }
 .cd-bar-title {
   flex: 1;
   margin: 0;
-  color: rgba(255,255,255,.85);
+  color: var(--cd-player-text);
   font-weight: 700;
   font-size: 0.88rem;
   white-space: nowrap;
@@ -194,11 +222,11 @@
 }
 .cd-bar-counter {
   font-size: 0.72rem;
-  color: rgba(255,255,255,.28);
+  color: var(--cd-player-text-faint);
   font-weight: 600;
 }
 .cd-bar-counter-sep {
-  color: rgba(255,255,255,.12);
+  color: var(--cd-player-divider);
 }
 .cd-bar-btn {
   display: flex;
@@ -208,7 +236,7 @@
   border: 1px solid var(--cd-primary-border);
   border-radius: 10px;
   padding: 7px 14px;
-  color: rgba(255,255,255,.7);
+  color: var(--cd-player-text-muted);
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -271,29 +299,45 @@
   width: 100%;
   max-width: 720px;
   aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, var(--cd-player-bg), #0d1230, var(--cd-player-bg));
+  background: var(--cd-player-info-bg);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 18px;
   position: relative;
   overflow: hidden;
-  border-radius: 10px;
-  border: 1px solid var(--cd-primary-border);
+  border-radius: 12px;
+  border: 1.5px dashed var(--cd-primary-border-md);
+  box-shadow: inset 0 0 60px var(--cd-primary-dim), var(--cd-shadow-video);
 }
+/* Soft radial glow at centre */
 .cd-no-video::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, rgba(99,102,241,.07), transparent 70%);
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 50%, var(--cd-primary-dim-lg), transparent 70%);
+  pointer-events: none;
+}
+/* Subtle corner accents */
+.cd-no-video::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 0% 0%,   var(--cd-primary-dim), transparent 35%),
+    radial-gradient(circle at 100% 100%, var(--cd-violet-dim),  transparent 35%);
+  opacity: 0.55;
+  pointer-events: none;
 }
 .cd-no-video-icon {
-  width: 64px;
-  height: 64px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
-  background: var(--cd-primary-dim);
-  border: 1px solid var(--cd-primary-border-md);
+  background: var(--cd-primary-dim-md);
+  border: 1.5px solid var(--cd-primary-border-md);
+  box-shadow: 0 0 24px var(--cd-primary-glow), 0 0 0 6px var(--cd-primary-dim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -304,10 +348,15 @@
 .cd-no-video-text {
   margin: 0;
   color: var(--cd-player-text-faint);
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   position: relative;
   z-index: 1;
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: var(--cd-player-surface);
+  border: 1px solid var(--cd-player-border-soft);
 }
 
 /* ── Chapter Info Panel ───────────────────────────────────────────────── */
@@ -343,14 +392,14 @@
   font-weight: 800;
   font-size: clamp(1.1rem, 2vw, 1.45rem);
   line-height: 1.3;
-  background: linear-gradient(135deg, #fff 60%, var(--cd-primary-light));
+  background: linear-gradient(135deg, var(--cd-player-title-from) 60%, var(--cd-player-title-to));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 .cd-ch-desc {
   margin: 10px 0 0;
-  color: rgba(255,255,255,.42);
+  color: var(--cd-player-text-muted);
   line-height: 1.75;
   font-size: 0.9rem;
 }
@@ -359,8 +408,8 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.08);
+  background: var(--cd-player-surface);
+  border: 1px solid var(--cd-player-border-lg);
   border-radius: 8px;
   flex-shrink: 0;
 }
@@ -382,9 +431,9 @@
   flex: 1;
   padding: 12px 18px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.07);
-  background: rgba(255,255,255,.04);
-  color: rgba(255,255,255,.35);
+  border: 1px solid var(--cd-player-border-md);
+  background: var(--cd-player-surface);
+  color: var(--cd-player-text-faint);
   font-weight: 600;
   font-size: 0.82rem;
   cursor: not-allowed;
@@ -402,7 +451,7 @@
 }
 .cd-nb.on {
   cursor: pointer;
-  color: rgba(255,255,255,.8);
+  color: var(--cd-player-text);
   border-color: var(--cd-primary-border-md);
   background: var(--cd-primary-dim);
 }
@@ -425,7 +474,7 @@
   margin: 0 0 12px;
   font-size: 0.9rem;
   font-weight: 700;
-  color: rgba(255,255,255,.65);
+  color: var(--cd-player-text-muted);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -437,7 +486,7 @@
   gap: 14px;
   padding: 14px 18px;
   background: var(--cd-player-surface-sm);
-  border: 1px solid rgba(255,255,255,.06);
+  border: 1px solid var(--cd-player-border-soft);
   border-radius: 12px;
   transition: all 0.2s;
 }
@@ -462,12 +511,12 @@
   margin: 0;
   font-weight: 600;
   font-size: 0.875rem;
-  color: rgba(255,255,255,.85);
+  color: var(--cd-player-text);
 }
 .cd-mat-type {
   margin: 2px 0 0;
   font-size: 0.68rem;
-  color: rgba(255,255,255,.26);
+  color: var(--cd-player-text-faint);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -512,9 +561,9 @@
   z-index: 5;
   backdrop-filter: blur(10px);
 }
-.cd-sb-title  { margin: 0; font-weight: 800; font-size: 0.9rem; color: #fff; }
-.cd-sb-meta   { margin: 3px 0 0; font-size: 0.72rem; color: rgba(255,255,255,.30); }
-.cd-sb-subj   { border-bottom: 1px solid rgba(255,255,255,.04); }
+.cd-sb-title  { margin: 0; font-weight: 800; font-size: 0.9rem; color: var(--cd-player-text); }
+.cd-sb-meta   { margin: 3px 0 0; font-size: 0.72rem; color: var(--cd-player-text-faint); }
+.cd-sb-subj   { border-bottom: 1px solid var(--cd-player-border-soft); }
 .cd-sb-subj-inner {
   display: flex;
   align-items: center;
@@ -551,7 +600,7 @@
   font-family: inherit;
   transition: background 0.15s;
 }
-.cd-subj-btn:hover { background: rgba(255,255,255,.02); }
+.cd-subj-btn:hover { background: var(--cd-player-hover-sm); }
 .cd-ch-btn {
   width: 100%;
   display: flex;
@@ -567,7 +616,7 @@
   transition: all 0.15s;
   position: relative;
 }
-.cd-ch-btn:hover  { background: rgba(255,255,255,.03); }
+.cd-ch-btn:hover  { background: var(--cd-player-hover); }
 .cd-ch-btn.active { background: var(--cd-primary-dim); }
 .cd-ch-btn.active::after {
   content: '';
