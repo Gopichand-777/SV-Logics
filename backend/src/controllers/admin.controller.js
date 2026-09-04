@@ -335,7 +335,7 @@ export const adminGrantCourseAccess = async (req, res) => {
     const [payment] = await db.insert(payments).values({
       studentId,
       courseId,
-      amount: course.price,      // full course price in paise
+      amount: course.price,      // full course price in rupees
       currency: 'INR',
       status: 'admin_grant',     // distinct status so reports can filter
       gateway: 'admin',           // granted by admin, not a payment gateway
@@ -708,14 +708,15 @@ export const adminGetTests = async (req, res) => {
 
 export const adminCreateTest = async (req, res) => {
   try {
-    const { title, description, courseId, category, subjectId, durationMinutes, difficulty,
-      isPublished, defaultMarks, defaultNegativeMarks } = req.body;
+    const { title, description, courseId, category, subjectId, subject,
+      durationMinutes, difficulty, isPublished, defaultMarks, defaultNegativeMarks } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required.' });
 
-    let subjectName = null;
+    // Resolve subject name: prefer subjectId (FK lookup), fall back to plain string
+    let subjectName = subject?.trim() || null;
     if (subjectId) {
       const [cs] = await db.select().from(courseSubjects).where(eq(courseSubjects.id, parseInt(subjectId)));
-      subjectName = cs?.name || null;
+      subjectName = cs?.name || subjectName;
     }
 
     const [test] = await db.insert(mockTests).values({
@@ -738,16 +739,16 @@ export const adminCreateTest = async (req, res) => {
 
 export const adminUpdateTest = async (req, res) => {
   try {
-    const { title, description, courseId, category, subjectId, durationMinutes, difficulty,
-      isPublished, defaultMarks, defaultNegativeMarks } = req.body;
+    const { title, description, courseId, category, subjectId, subject,
+      durationMinutes, difficulty, isPublished, defaultMarks, defaultNegativeMarks } = req.body;
 
+    // Resolve subject name: prefer subjectId (FK lookup), fall back to plain string
     let subjectName = undefined;
-    if (subjectId !== undefined) {
+    if (subjectId !== undefined || subject !== undefined) {
+      subjectName = subject?.trim() || null;
       if (subjectId) {
         const [cs] = await db.select().from(courseSubjects).where(eq(courseSubjects.id, parseInt(subjectId)));
-        subjectName = cs?.name || null;
-      } else {
-        subjectName = null;
+        subjectName = cs?.name || subjectName;
       }
     }
 
@@ -825,27 +826,90 @@ export const adminBulkImportQuestions = async (req, res) => {
       return res.status(400).json({ error: 'Questions array is required.' });
     }
 
+    // ── PASS 1: Normalise fields (camelCase OR snake_case) ──────────────────
     const rows = qList.map((q, i) => ({
-      testId: parseInt(testId),
-      questionText: q.question_text,
-      optionA: q.option_a, optionB: q.option_b,
-      optionC: q.option_c, optionD: q.option_d,
-      correctOption: q.correct_option,
-      explanation: q.explanation || null,
-      marks: q.marks || 1,
-      negativeMarks: String(q.negative_marks || '0.25'),
-      orderIndex: q.order_index || i + 1,
+      testId:        parseInt(testId),
+      questionText:  (q.questionText  || q.question_text  || '').trim(),
+      optionA:       (q.optionA       || q.option_a       || '').trim(),
+      optionB:       (q.optionB       || q.option_b       || '').trim(),
+      optionC:       (q.optionC       || q.option_c       || '').trim(),
+      optionD:       (q.optionD       || q.option_d       || '').trim(),
+      correctOption: (q.correctOption || q.correct_option || '').trim().toLowerCase(),
+      explanation:   q.explanation    || null,
+      marks:         q.marks          ?? 1,
+      // Keep null if not provided so required validation catches it
+      marks:         (q.marks !== undefined && q.marks !== null) ? q.marks : null,
+      negativeMarks: (q.negativeMarks !== undefined && q.negativeMarks !== null)
+                       ? String(q.negativeMarks)
+                       : (q.negative_marks !== undefined && q.negative_marks !== null ? String(q.negative_marks) : null),
+      subject:       q.subject        || null,
+      orderIndex:    q.orderIndex     || q.order_index || i + 1,
     }));
 
+    // ── PASS 2: Per-row field validation ────────────────────────────────────
+    const VALID_OPTIONS = new Set(['a', 'b', 'c', 'd']);
+    const validationErrors = [];
+
+    rows.forEach((row, i) => {
+      const rowNum = i + 1;
+      if (!row.questionText)
+        validationErrors.push(`Row ${rowNum}: "questionText" is required.`);
+      if (!row.optionA)
+        validationErrors.push(`Row ${rowNum}: "optionA" is required.`);
+      if (!row.optionB)
+        validationErrors.push(`Row ${rowNum}: "optionB" is required.`);
+      if (!row.optionC)
+        validationErrors.push(`Row ${rowNum}: "optionC" is required.`);
+      if (!row.optionD)
+        validationErrors.push(`Row ${rowNum}: "optionD" is required.`);
+      if (!row.correctOption)
+        validationErrors.push(`Row ${rowNum}: "correctOption" is required.`);
+      else if (!VALID_OPTIONS.has(row.correctOption))
+        validationErrors.push(`Row ${rowNum}: "correctOption" must be one of a, b, c, d (got "${row.correctOption}").`);
+      if (row.marks === null || row.marks === undefined)
+        validationErrors.push(`Row ${rowNum}: "marks" is required.`);
+      if (row.negativeMarks === null || row.negativeMarks === undefined)
+        validationErrors.push(`Row ${rowNum}: "negativeMarks" is required.`);
+      if (!row.explanation)
+        validationErrors.push(`Row ${rowNum}: "explanation" is required.`);
+      if (!row.subject)
+        validationErrors.push(`Row ${rowNum}: "subject" is required.`);
+    });
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ error: validationErrors.join('\n') });
+    }
+
+    // ── PASS 3: Duplicate detection within the batch ─────────────────────────
+    const seen = new Map();   // normalised questionText → first row number
+    const duplicateErrors = [];
+
+    rows.forEach((row, i) => {
+      const key = row.questionText.toLowerCase().replace(/\s+/g, ' ');
+      if (seen.has(key)) {
+        duplicateErrors.push(
+          `Row ${i + 1} is a duplicate of Row ${seen.get(key)}: "${row.questionText.slice(0, 60)}${row.questionText.length > 60 ? '…' : ''}"`
+        );
+      } else {
+        seen.set(key, i + 1);
+      }
+    });
+
+    if (duplicateErrors.length > 0) {
+      return res.status(400).json({ error: `Duplicate questions found:\n${duplicateErrors.join('\n')}` });
+    }
+
+    // ── INSERT ────────────────────────────────────────────────────────────────
     await db.insert(questions).values(rows);
     await db.execute(sql`UPDATE mock_tests SET total_questions = (SELECT COUNT(*) FROM questions WHERE test_id = ${parseInt(testId)}) WHERE id = ${parseInt(testId)}`);
 
-    return res.json({ message: `${rows.length} questions imported!` });
+    return res.json({ message: `${rows.length} questions imported successfully!` });
   } catch (err) {
     console.error('Bulk import error:', err);
-    return res.status(500).json({ error: 'Server error. Check JSON format.' });
+    return res.status(500).json({ error: 'Server error during import. Please check your data and try again.' });
   }
 };
+
 
 export const adminUpdateQuestion = async (req, res) => {
   try {
@@ -877,15 +941,17 @@ export const adminUpdateQuestion = async (req, res) => {
 export const adminDeleteQuestion = async (req, res) => {
   try {
     const [q] = await db.select().from(questions).where(eq(questions.id, parseInt(req.params.id)));
+    if (!q) return res.status(404).json({ error: 'Question not found.' });
+    // Delete the question — attempt_answers rows cascade automatically (onDelete: 'cascade')
     await db.delete(questions).where(eq(questions.id, parseInt(req.params.id)));
-    if (q) {
-      await db.execute(sql`UPDATE mock_tests SET total_questions = (SELECT COUNT(*) FROM questions WHERE test_id = ${q.testId}) WHERE id = ${q.testId}`);
-    }
+    await db.execute(sql`UPDATE mock_tests SET total_questions = (SELECT COUNT(*) FROM questions WHERE test_id = ${q.testId}) WHERE id = ${q.testId}`);
     return res.json({ message: 'Question deleted.' });
   } catch (err) {
-    return res.status(500).json({ error: 'Server error.' });
+    console.error('Delete question error:', err);
+    return res.status(500).json({ error: 'Failed to delete question. ' + (err.message || 'Server error.') });
   }
 };
+
 
 // ── ENROLLMENTS & PAYMENTS (Super Admin Only) ─────────────────────────────────
 export const adminGetEnrollments = async (req, res) => {

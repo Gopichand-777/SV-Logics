@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Video, ExternalLink, Clock, Calendar, RefreshCw, Wifi } from 'lucide-react';
 import { liveClassesApi } from '../../api/liveclasses.api.js';
+import { JOIN_GRACE_MINUTES } from '../../config/liveClass.config.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -31,11 +32,15 @@ function getNextOccurrence(scheduledAt, recurrenceRule) {
   return nearest || base;
 }
 
+
 /**
  * Classify a class into 'live' | 'upcoming' | 'past'
+ * - 'live'     : within the 10-min join window (start → start+10min)
+ * - 'upcoming' : not started yet
+ * - 'past'     : 10-min window has closed (late entry not allowed)
+ * Accepts an explicit `now` Date so callers can force re-classification.
  */
-function classifyClass(cls) {
-  const now = new Date();
+function classifyClass(cls, now = new Date()) {
   let start;
   if (cls.isRecurring && cls.recurrenceRule) {
     start = getNextOccurrence(cls.scheduledAt, cls.recurrenceRule);
@@ -43,20 +48,22 @@ function classifyClass(cls) {
     start = new Date(cls.scheduledAt);
   }
   const end = new Date(start.getTime() + cls.durationMinutes * 60 * 1000);
+  const joinDeadline = new Date(start.getTime() + JOIN_GRACE_MINUTES * 60 * 1000);
 
-  if (now >= start && now <= end) return { status: 'live', nextStart: start, end };
-  if (now < start) return { status: 'upcoming', nextStart: start, end };
+  if (now < start) return { status: 'upcoming', nextStart: start, end, joinDeadline };
+  if (now <= joinDeadline) return { status: 'live', nextStart: start, end, joinDeadline };
   if (cls.isRecurring) {
-    // Recurring past slots cycle — treat as upcoming (next week)
+    // Recurring: grace window closed — compute next week's occurrence
     const next = getNextOccurrence(cls.scheduledAt, cls.recurrenceRule);
-    return { status: 'upcoming', nextStart: next, end: new Date(next.getTime() + cls.durationMinutes * 60 * 1000) };
+    const nextDeadline = new Date(next.getTime() + JOIN_GRACE_MINUTES * 60 * 1000);
+    return { status: 'upcoming', nextStart: next, end: new Date(next.getTime() + cls.durationMinutes * 60 * 1000), joinDeadline: nextDeadline };
   }
-  return { status: 'past', nextStart: start, end };
+  return { status: 'past', nextStart: start, end, joinDeadline };
 }
 
 const platformLabel = (p) => p === 'google_meet' ? 'Google Meet' : 'Zoom';
 const platformColor = (p) => p === 'google_meet' ? '#16a34a' : '#2563eb';
-const platformBg    = (p) => p === 'google_meet' ? 'rgba(22,163,74,0.12)' : 'rgba(37,99,235,0.12)';
+const platformBg = (p) => p === 'google_meet' ? 'rgba(22,163,74,0.12)' : 'rgba(37,99,235,0.12)';
 
 const fmtDate = (d) =>
   new Date(d).toLocaleString('en-IN', {
@@ -66,10 +73,15 @@ const fmtDate = (d) =>
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function LiveClassCard({ cls, info }) {
-  const { status, nextStart } = info;
+function LiveClassCard({ cls, info, now }) {
+  const { status, nextStart, joinDeadline } = info;
   const isLive = status === 'live';
   const isPast = status === 'past';
+
+  // Minutes remaining in the 10-min join window
+  const minsLeft = isLive
+    ? Math.max(0, Math.ceil((joinDeadline - now) / 60_000))
+    : null;
 
   return (
     <div style={{
@@ -150,28 +162,44 @@ function LiveClassCard({ cls, info }) {
 
       {/* CTA button */}
       {!isPast ? (
-        <a
-          href={cls.meetingUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '10px 20px', borderRadius: 'var(--radius-md)',
-            background: isLive
-              ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-              : platformColor(cls.platform),
-            color: 'white', fontWeight: 700, fontSize: '0.875rem',
-            textDecoration: 'none', transition: 'opacity 0.2s',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.88'}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-        >
-          <ExternalLink size={15} />
-          {isLive ? 'Join Now' : 'Open Meeting Link'}
-        </a>
+        <>
+          <a
+            href={cls.meetingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '10px 20px', borderRadius: 'var(--radius-md)',
+              background: isLive
+                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                : platformColor(cls.platform),
+              color: 'white', fontWeight: 700, fontSize: '0.875rem',
+              textDecoration: 'none', transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.88'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            <ExternalLink size={15} />
+            {isLive ? 'Join Now' : 'Open Meeting Link'}
+          </a>
+          {/* Warn student how much time is left to join */}
+          {isLive && minsLeft !== null && (
+            <p style={{
+              marginTop: 8, textAlign: 'center', fontSize: '0.75rem',
+              color: minsLeft <= 3 ? '#ef4444' : '#f97316', fontWeight: 700,
+            }}>
+              ⏳ Join within {minsLeft} min{minsLeft !== 1 ? 's' : ''} — late entry not allowed
+            </p>
+          )}
+        </>
       ) : (
-        <div style={{ padding: '10px 20px', borderRadius: 'var(--radius-md)', background: 'var(--color-border)', color: 'var(--color-text-muted)', textAlign: 'center', fontSize: '0.875rem', fontWeight: 600 }}>
-          Session Ended
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '10px 20px', borderRadius: 'var(--radius-md)',
+          background: 'var(--color-border)', color: 'var(--color-text-muted)',
+          textAlign: 'center', fontSize: '0.875rem', fontWeight: 600,
+        }}>
+          🔒 Late Entry Closed
         </div>
       )}
     </div>
@@ -201,26 +229,31 @@ function Section({ title, icon, count, children, accentColor }) {
 export default function LiveClasses() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Tick every minute so classifications auto-update (button disables when session ends)
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     liveClassesApi.getAll()
       .then((res) => setClasses(res.data.liveClasses || []))
       .catch(() => setClasses([]))
       .finally(() => setLoading(false));
+
+    const ticker = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(ticker);
   }, []);
 
   const classified = useMemo(() => {
     const live = [], upcoming = [], past = [];
     classes.forEach((cls) => {
-      const info = classifyClass(cls);
-      if (info.status === 'live')     live.push({ cls, info });
+      const info = classifyClass(cls, now);
+      if (info.status === 'live') live.push({ cls, info });
       else if (info.status === 'upcoming') upcoming.push({ cls, info });
       else past.push({ cls, info });
     });
     // Sort upcoming by nextStart ascending
     upcoming.sort((a, b) => a.info.nextStart - b.info.nextStart);
     return { live, upcoming, past };
-  }, [classes]);
+  }, [classes, now]);
 
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '80vh' }}>
@@ -276,21 +309,21 @@ export default function LiveClasses() {
             {/* 🔴 Live Now */}
             <Section title="Live Now" icon={<Wifi size={18} />} count={classified.live.length} accentColor="#ef4444">
               {classified.live.map(({ cls, info }) => (
-                <LiveClassCard key={cls.id} cls={cls} info={info} />
+                <LiveClassCard key={cls.id} cls={cls} info={info} now={now} />
               ))}
             </Section>
 
             {/* 📅 Upcoming */}
             <Section title="Upcoming" icon={<Calendar size={18} />} count={classified.upcoming.length} accentColor="#3b82f6">
               {classified.upcoming.map(({ cls, info }) => (
-                <LiveClassCard key={cls.id} cls={cls} info={info} />
+                <LiveClassCard key={cls.id} cls={cls} info={info} now={now} />
               ))}
             </Section>
 
-            {/* ⏳ Past */}
+            {/* 🔒 Late Entry Closed */}
             <Section title="Past Sessions" icon={<Clock size={18} />} count={classified.past.length} accentColor="#6b7280">
               {classified.past.map(({ cls, info }) => (
-                <LiveClassCard key={cls.id} cls={cls} info={info} />
+                <LiveClassCard key={cls.id} cls={cls} info={info} now={now} />
               ))}
             </Section>
           </>

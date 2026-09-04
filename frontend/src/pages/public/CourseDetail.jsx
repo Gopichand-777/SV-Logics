@@ -4,7 +4,7 @@ import {
   Clock, BookOpen, Lock, Play, ChevronDown, ChevronUp,
   ArrowLeft, Layers, FileText, ExternalLink, CheckCircle,
   GraduationCap, PlayCircle, BookMarked, Zap, Star, Users,
-  Shield, Award, TrendingUp,
+  Award,
 } from 'lucide-react';
 import { coursesApi } from '../../api/courses.api.js';
 import { paymentApi } from '../../api/dashboard.api.js';
@@ -12,7 +12,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import './CourseDetail.css';
 
 /* ─── Helpers ─────────────────────────────────────────────────────────────── */
-const fmt = (p) => `₹${(p / 100).toLocaleString('en-IN')}`;
+const fmt = (p) => `₹${(p).toLocaleString('en-IN')}`;
 
 const COLORS = {
   'Quantitative Aptitude':            { a: '#6366f1', g: 'rgba(99,102,241,0.3)',  b: 'rgba(99,102,241,0.08)',  d: 'rgba(99,102,241,0.2)' },
@@ -119,65 +119,99 @@ function VideoArea({ chapter, onFetchSignedUrl }) {
   );
 }
 
-/** Chapter title + description + nav + materials */
+/** Chapter info + study materials — two side-by-side sections below the video */
 function ChapterInfoPanel({ chapter, prev, next, onPrev, onNext, materials }) {
   return (
     <div className="cd-info cd-s">
       <div className="cd-info-inner">
 
-        {/* Chapter header */}
-        {chapter && (
-          <div className="cd-ch-meta-row">
-            <div className="cd-ch-meta-col">
-              <p className="cd-ch-label">Chapter {chapter.orderIndex}</p>
-              <h2 className="cd-ch-title">{chapter.title}</h2>
-              {chapter.description && <p className="cd-ch-desc">{chapter.description}</p>}
+        {/* ── Two column layout ───────────────────────────────────────── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 20,
+          alignItems: 'start',
+        }}>
+
+          {/* ── Section 1: Chapter ───────────────────────────────────── */}
+          <div style={{
+            background: 'var(--cd-player-surface)',
+            border: '1px solid rgba(99,102,241,0.15)',
+            borderRadius: 12,
+            padding: '18px 20px',
+          }}>
+            {/* Section heading */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
+              paddingBottom: 12, borderBottom: '1px solid rgba(99,102,241,0.1)' }}>
+              <BookOpen size={14} color="var(--cd-primary)" />
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--cd-primary)',
+                textTransform: 'uppercase', letterSpacing: '0.08em' }}>Chapter</span>
             </div>
-            {chapter.durationMin > 0 && (
-              <div className="cd-dur-pill">
-                <Clock size={13} color="var(--cd-primary)" />
-                <span className="cd-dur-pill-text">{chapter.durationMin}m</span>
-              </div>
+
+            {/* Chapter details */}
+            {chapter && (
+              <>
+                <p className="cd-ch-label">Chapter {chapter.orderIndex}</p>
+                <h2 className="cd-ch-title">{chapter.title}</h2>
+                {chapter.description && <p className="cd-ch-desc">{chapter.description}</p>}
+                {chapter.durationMin > 0 && (
+                  <div className="cd-dur-pill" style={{ marginTop: 10 }}>
+                    <Clock size={13} color="var(--cd-primary)" />
+                    <span className="cd-dur-pill-text">{chapter.durationMin}m</span>
+                  </div>
+                )}
+              </>
             )}
-          </div>
-        )}
 
-        {/* Navigation */}
-        <div className="cd-nav">
-          <button className={`cd-nb${prev ? ' on' : ''}`} onClick={() => prev && onPrev()} disabled={!prev}>
-            <ArrowLeft size={14} />
-            <span className="cd-nb-label">{prev ? prev.title : 'Previous'}</span>
-          </button>
-          <button className={`cd-nb next${next ? ' on' : ''}`} onClick={() => next && onNext()} disabled={!next}>
-            <span className="cd-nb-label">{next ? next.title : 'Next'}</span>
-            {next && <Play size={13} style={{ flexShrink: 0 }} />}
-          </button>
-        </div>
-
-        {/* Study materials */}
-        {materials.length > 0 && (
-          <div className="cd-mat-section">
-            <h3 className="cd-mat-heading">
-              <BookMarked size={15} color="var(--cd-primary)" /> Study Materials
-            </h3>
-            <div className="cd-mat-list">
-              {materials.map(m => (
-                <div key={m.id} className="cd-mat">
-                  <div className={`cd-mat-icon cd-mat-icon--${m.type === 'pdf' ? 'pdf' : 'other'}`}>
-                    <FileText size={16} color={m.type === 'pdf' ? 'var(--cd-error)' : 'var(--cd-primary)'} />
-                  </div>
-                  <div className="cd-mat-body">
-                    <p className="cd-mat-name">{m.title}</p>
-                    <p className="cd-mat-type">{m.type || 'PDF'}</p>
-                  </div>
-                  <a href={m.fileUrl} target="_blank" rel="noopener noreferrer" className="cd-mat-link">
-                    <ExternalLink size={11} /> Open
-                  </a>
-                </div>
-              ))}
+            {/* Prev / Next navigation */}
+            <div className="cd-nav" style={{ marginTop: 16 }}>
+              <button className={`cd-nb${prev ? ' on' : ''}`} onClick={() => prev && onPrev()} disabled={!prev}>
+                <ArrowLeft size={14} />
+                <span className="cd-nb-label">{prev ? prev.title : 'Previous'}</span>
+              </button>
+              <button className={`cd-nb next${next ? ' on' : ''}`} onClick={() => next && onNext()} disabled={!next}>
+                <span className="cd-nb-label">{next ? next.title : 'Next'}</span>
+                {next && <Play size={13} style={{ flexShrink: 0 }} />}
+              </button>
             </div>
           </div>
-        )}
+
+          {/* ── Section 2: Study Materials ───────────────────────────── */}
+          {materials.length > 0 && (
+            <div style={{
+              background: 'var(--cd-player-surface)',
+              border: '1px solid rgba(99,102,241,0.15)',
+              borderRadius: 12,
+              padding: '18px 20px',
+            }}>
+              {/* Section heading */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
+                paddingBottom: 12, borderBottom: '1px solid rgba(99,102,241,0.1)' }}>
+                <BookMarked size={14} color="var(--cd-primary)" />
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--cd-primary)',
+                  textTransform: 'uppercase', letterSpacing: '0.08em' }}>Study Materials</span>
+              </div>
+
+              <div className="cd-mat-list">
+                {materials.map(m => (
+                  <div key={m.id} className="cd-mat">
+                    <div className={`cd-mat-icon cd-mat-icon--${m.type === 'pdf' ? 'pdf' : 'other'}`}>
+                      <FileText size={16} color={m.type === 'pdf' ? 'var(--cd-error)' : 'var(--cd-primary)'} />
+                    </div>
+                    <div className="cd-mat-body">
+                      <p className="cd-mat-name">{m.title}</p>
+                      <p className="cd-mat-type">{m.type || 'PDF'}</p>
+                    </div>
+                    <a href={m.fileUrl} target="_blank" rel="noopener noreferrer" className="cd-mat-link">
+                      <ExternalLink size={11} /> Open
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
       </div>
     </div>
   );
@@ -553,16 +587,65 @@ function InlinePlayerCard({ chapters }) {
     </div>
   );
 }
-/** Sticky enroll card */
+const ENROLL_EMAIL = 'support@svlogics.com';
+
+function ContactEnroll() {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(ENROLL_EMAIL).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div style={{
+      marginTop: 14,
+      padding: '14px 16px',
+      borderRadius: 10,
+      background: 'rgba(99,102,241,0.08)',
+      border: '1px solid rgba(99,102,241,0.2)',
+      textAlign: 'center',
+    }}>
+      <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: 10, fontWeight: 600, letterSpacing: '0.02em' }}>
+        📩 To enroll, send us an email
+      </p>
+
+      {/* Email address row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#a5b4fc', wordBreak: 'break-all' }}>
+          {ENROLL_EMAIL}
+        </span>
+
+        {/* Copy button */}
+        <button
+          onClick={handleCopy}
+          title={copied ? 'Copied!' : 'Copy email address'}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 10px', borderRadius: 6, border: '1px solid rgba(99,102,241,0.35)',
+            background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.12)',
+            color: copied ? '#34d399' : '#818cf8',
+            fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+            transition: 'all 0.2s', flexShrink: 0,
+          }}
+        >
+          {copied ? '✓ Copied' : 'Copy'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 function EnrollCard({ course, chapCount, subjectCount, enrolling, error, onEnroll }) {
   const discount = course.originalPrice ? Math.round((1 - course.price / course.originalPrice) * 100) : 0;
   const features = [
     [Clock,         `${course.durationHours}+ hours of content`],
     [BookOpen,      `${chapCount} video chapters`],
     [Layers,        `${subjectCount} subject areas`],
-    [GraduationCap, 'Lifetime access'],
-    [Shield,        'Certificate of completion'],
-    [TrendingUp,    'Progress tracking'],
+    [GraduationCap, '6 months validity'],
   ];
   return (
     <div className="cd-enroll">
@@ -577,12 +660,20 @@ function EnrollCard({ course, chapCount, subjectCount, enrolling, error, onEnrol
           <div className="cd-price-spacer" />
         )}
         {error && <div className="cd-err">⚠ {error}</div>}
-        <button id="enroll-now-btn" className="cd-enroll-btn" onClick={onEnroll} disabled={enrolling}>
-          {enrolling
-            ? <><div className="cd-btn-spinner cd-spin" />Processing...</>
-            : <><Zap size={17} />Enroll Now</>}
+
+        {/* Enroll button — disabled until payment integration is live */}
+        <button
+          id="enroll-now-btn"
+          className="cd-enroll-btn"
+          disabled
+          style={{ opacity: 0.45, cursor: 'not-allowed' }}
+          title="Online enrollment coming soon"
+        >
+          <Zap size={17} /> Enroll Now
         </button>
-        <p className="cd-guarantee">30-day money-back guarantee</p>
+
+        {/* Contact to enroll */}
+        <ContactEnroll />
       </div>
       <div className="cd-enroll-body">
         <p className="cd-includes-label">This course includes</p>

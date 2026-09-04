@@ -4,6 +4,7 @@ import { Sun, Moon, Menu, X, User, LogOut, LayoutDashboard, FileText, Video } fr
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { liveClassesApi } from '../../api/liveclasses.api.js';
+import { JOIN_GRACE_MS } from '../../config/liveClass.config.js';
 
 
 export default function Navbar() {
@@ -26,8 +27,8 @@ export default function Navbar() {
         const now = new Date();
         const live = classes.some((cls) => {
           const start = new Date(cls.scheduledAt);
-          const end = new Date(start.getTime() + cls.durationMinutes * 60 * 1000);
-          return now >= start && now <= end;
+          const joinDeadline = new Date(start.getTime() + JOIN_GRACE_MS);
+          return now >= start && now <= joinDeadline;
         });
         setHasLiveNow(live);
       } catch {

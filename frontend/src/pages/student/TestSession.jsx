@@ -66,7 +66,7 @@ export default function TestSession() {
     const timeTakenSec = Math.floor((Date.now() - startTime.current) / 1000);
     try {
       const { data } = await testsApi.submit(id, { answers: answerList, timeTakenSec });
-      navigate(`/tests/result/${data.attempt.id}`);
+      navigate(`/tests/result/${data.attempt.id}`, { replace: true });
     } catch (err) {
       toast.error('Submission failed. Please try again.');
       setSubmitting(false);

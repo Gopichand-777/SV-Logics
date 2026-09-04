@@ -4,7 +4,7 @@ import { Users, BookOpen, FileText, CreditCard, TrendingUp, Activity } from 'luc
 import { adminApi } from '../api/admin.api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const formatCurrency = (paise) => `₹${((paise || 0) / 100).toLocaleString('en-IN')}`;
+const formatCurrency = (rupees) => `₹${((rupees) || 0).toLocaleString('en-IN')}`;
 
 export default function AdminDashboard() {
   const { admin, isSuperAdmin } = useAuth();

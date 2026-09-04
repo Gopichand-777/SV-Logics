@@ -259,15 +259,22 @@ export default function Home() {
 
       {/* ── CTA Banner ──────────────────────────────────────────────────── */}
       <section style={{
-        background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)',
-        padding: '64px 0',
+        background: 'linear-gradient(135deg, #0f1f3d 0%, #1d3a8a 50%, #1e1b4b 100%)',
+        padding: '72px 0',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        <div className="container" style={{ textAlign: 'center' }}>
-          <BookOpen size={48} color="rgba(255,255,255,0.3)" style={{ margin: '0 auto 16px' }} />
+        {/* Decorative circles */}
+        <div style={{ position: 'absolute', top: -60, right: -60, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -80, left: '25%', width: 360, height: 360, borderRadius: '50%', background: 'rgba(99,102,241,0.07)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '30%', left: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(139,92,246,0.05)', pointerEvents: 'none' }} />
+
+        <div className="container" style={{ textAlign: 'center', position: 'relative' }}>
+          <BookOpen size={48} color="rgba(255,255,255,0.25)" style={{ margin: '0 auto 16px' }} />
           <h2 className="heading-lg" style={{ color: 'white', marginBottom: 16 }}>
             Ready to Start Your Journey?
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '1.1rem', marginBottom: 32, maxWidth: 480, margin: '0 auto 32px' }}>
+          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '1.1rem', marginBottom: 32, maxWidth: 480, margin: '0 auto 32px' }}>
             Join thousands of students who are cracking government exams with SV Logics.
           </p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>

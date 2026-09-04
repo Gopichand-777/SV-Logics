@@ -11,6 +11,13 @@ const EMPTY_FORM = {
   isRecurring: false, recurrenceDays: [], isActive: true,
 };
 
+/** Returns current local datetime in the format required by datetime-local inputs (YYYY-MM-DDTHH:MM). */
+const getNowMin = () => {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+};
+
 const fmt = (d) =>
   d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
@@ -91,6 +98,9 @@ export default function AdminLiveClasses() {
     if (!form.title.trim()) return setMsg('❌ Title is required.');
     if (!form.meetingUrl.trim()) return setMsg('❌ Meeting URL is required.');
     if (!form.scheduledAt) return setMsg('❌ Scheduled date & time is required.');
+    // Prevent scheduling in the past for non-recurring classes
+    if (!form.isRecurring && new Date(form.scheduledAt) < new Date())
+      return setMsg('❌ Scheduled date & time cannot be in the past.');
     if (form.isRecurring && form.recurrenceDays.length === 0)
       return setMsg('❌ Select at least one day for recurring classes.');
 
@@ -299,6 +309,7 @@ export default function AdminLiveClasses() {
                 <div className="form-group">
                   <label className="form-label">Scheduled Date & Time *</label>
                   <input id="lc-scheduled-at" className="form-input" type="datetime-local" value={form.scheduledAt}
+                    min={form.isRecurring ? undefined : getNowMin()}
                     onChange={(e) => setForm((f) => ({ ...f, scheduledAt: e.target.value }))} />
                 </div>
                 <div className="form-group">
