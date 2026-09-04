@@ -35,3 +35,6 @@ Thumbs.db
 
 # Local change log — agent memory, not for Git
 CHANGELOG.md
+
+# Agent customizations — local only, not for Git
+.agents/
