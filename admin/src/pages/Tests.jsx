@@ -47,6 +47,7 @@ export default function AdminTests() {
   const [form, setForm]         = useState(initTest);
   const [saving, setSaving]     = useState(false);
   const [msg, setMsg]           = useState('');
+  const [modalError, setModalError] = useState('');
   const [confirmState, setConfirmState] = useState(null);
   const closeConfirm = () => setConfirmState(null);
   const askConfirm = (title, message, onConfirm) => setConfirmState({ title, message, onConfirm });
@@ -56,40 +57,57 @@ export default function AdminTests() {
   const [filterSubject, setFilterSubject]   = useState('');
   const [filterStatus, setFilterStatus]     = useState('');
 
+  // Categories come from courses API (dynamic, independent of tests)
+  const [allCategories, setAllCategories] = useState([]);
+
   const load = () => adminApi.getTests().then(r => setTests(r.data.tests)).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
 
-  // ── Derive categories dynamically from fetched tests ──────────────────────
-  const allCategories = useMemo(() => {
-    return [...new Set(tests.map(t => t.category).filter(Boolean))].sort();
-  }, [tests]);
+  // Fetch courses on mount for category list
+  useEffect(() => {
+    load();
+    adminApi.getCourses().then(r => {
+      const courses = r.data.courses || [];
+      const unique = [...new Set(courses.map(c => c.category).filter(Boolean))].sort();
+      setAllCategories(unique);
+    }).catch(() => {});
+  }, []);
 
-  // ── Derive subjects for the currently selected filter category ────────────
+  // ── Subjects derived from the `tests` array (legacy `subject` field) ──────
+  // This is the single source of truth — it's exactly what is stored & displayed.
+
+  // All unique subjects across all tests (used when no category filter is active)
+  const allSubjectOptions = useMemo(() =>
+    [...new Set(tests.map(t => t.subject).filter(Boolean))].sort()
+  , [tests]);
+
+  // Subjects for the currently-selected filter category
   const filterSubjectOptions = useMemo(() => {
-    if (!filterCategory) return [];
+    if (!filterCategory) return allSubjectOptions;
     return [...new Set(tests.filter(t => t.category === filterCategory).map(t => t.subject).filter(Boolean))].sort();
-  }, [tests, filterCategory]);
+  }, [tests, filterCategory, allSubjectOptions]);
 
-  // ── Derive subjects for the form's selected category ─────────────────────
+  // Subjects for the currently-selected form category (used in Create/Edit datalist)
   const formSubjectOptions = useMemo(() => {
-    if (!form.category) return [];
+    if (!form.category) return allSubjectOptions;
     return [...new Set(tests.filter(t => t.category === form.category).map(t => t.subject).filter(Boolean))].sort();
-  }, [tests, form.category]);
+  }, [tests, form.category, allSubjectOptions]);
 
   const openModal = (test = null) => {
     setEditTest(test);
     setForm(test ? { ...test } : initTest);
+    setModalError('');
     setModal(true);
   };
-  const closeModal = () => { setModal(false); setEditTest(null); };
+  const closeModal = () => { setModal(false); setEditTest(null); setModalError(''); };
 
   const save = async () => {
-    setSaving(true); setMsg('');
+    if (!form.title?.trim()) { setModalError('Test title is required.'); return; }
+    setSaving(true); setModalError('');
     try {
       if (editTest) await adminApi.updateTest(editTest.id, form);
       else          await adminApi.createTest(form);
       setMsg('✅ Test saved!'); load(); closeModal();
-    } catch (err) { setMsg('❌ ' + (err.response?.data?.error || 'Error')); }
+    } catch (err) { setModalError(err.response?.data?.error || 'Failed to save. Please try again.'); }
     finally { setSaving(false); }
   };
 
@@ -140,10 +158,9 @@ export default function AdminTests() {
           style={{ width: 'auto', minWidth: 200 }}
           value={filterSubject}
           onChange={e => setFilterSubject(e.target.value)}
-          disabled={!filterCategory}
         >
           <option value="">All Subjects</option>
-          {filterSubjectOptions.map(s => <option key={s}>{s}</option>)}
+          {(filterCategory ? filterSubjectOptions : allSubjectOptions).map(s => <option key={s}>{s}</option>)}
         </select>
         <select
           className="form-select"
@@ -233,12 +250,13 @@ export default function AdminTests() {
               </div>
               <div className="form-group">
                 <label className="form-label">Category</label>
-                <select
-                  className="form-select"
+                <input
+                  className="form-input"
+                  list="category-options"
                   value={form.category}
                   onChange={e => setForm(f => ({ ...f, category: e.target.value, subject: '' }))}
-                  list="category-options"
                   placeholder="e.g. SSC CGL"
+                  autoComplete="off"
                 />
                 <datalist id="category-options">
                   {allCategories.map(c => <option key={c} value={c} />)}
@@ -246,12 +264,13 @@ export default function AdminTests() {
               </div>
               <div className="form-group">
                 <label className="form-label">Subject</label>
-                <select
-                  className="form-select"
+                <input
+                  className="form-input"
+                  list="subject-options"
                   value={form.subject}
                   onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-                  list="subject-options"
                   placeholder="e.g. Quantitative Aptitude"
+                  autoComplete="off"
                 />
                 <datalist id="subject-options">
                   {formSubjectOptions.map(s => <option key={s} value={s} />)}
@@ -329,9 +348,16 @@ export default function AdminTests() {
                 </span>
               </div>
             </div>
-            <div className="modal-footer">
-              <button onClick={closeModal} className="btn btn-outline">Cancel</button>
-              <button onClick={save} disabled={saving} className="btn btn-primary"><Save size={15} /> {saving ? 'Saving...' : 'Save Test'}</button>
+            <div className="modal-footer" style={{ flexDirection: 'column', gap: 10 }}>
+              {modalError && (
+                <div style={{ width: '100%', padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '0.82rem', fontWeight: 600 }}>
+                  ❌ {modalError}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10, width: '100%', justifyContent: 'flex-end' }}>
+                <button onClick={closeModal} className="btn btn-outline">Cancel</button>
+                <button onClick={save} disabled={saving} className="btn btn-primary"><Save size={15} /> {saving ? 'Saving...' : 'Save Test'}</button>
+              </div>
             </div>
           </div>
         </div>

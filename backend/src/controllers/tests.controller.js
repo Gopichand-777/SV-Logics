@@ -1,16 +1,44 @@
 import { db } from '../db/index.js';
 import { mockTests, questions, testAttempts, attemptAnswers } from '../db/schema.js';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, ilike } from 'drizzle-orm';
 import { updateStreak } from '../utils/streak.util.js';
 
 export const getTests = async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category, subject, page = 1, limit = 9 } = req.query;
+
+    const pageNum  = Math.max(1, parseInt(page)  || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 9));
+    const offset   = (pageNum - 1) * limitNum;
+
+    // Build filter conditions
     let conditions = [eq(mockTests.isPublished, true)];
     if (category) conditions.push(eq(mockTests.category, category));
+    if (subject)  conditions.push(ilike(mockTests.subject, subject));
 
-    const tests = await db.select().from(mockTests).where(and(...conditions));
-    return res.json({ tests });
+    const whereClause = and(...conditions);
+
+    // Run count + paginated fetch in parallel
+    const [[{ count }], tests] = await Promise.all([
+      db.select({ count: sql`count(*)` }).from(mockTests).where(whereClause),
+      db.select().from(mockTests)
+        .where(whereClause)
+        .orderBy(desc(mockTests.createdAt))
+        .limit(limitNum)
+        .offset(offset),
+    ]);
+
+    const total = Number(count);
+
+    return res.json({
+      tests,
+      pagination: {
+        total,
+        page:       pageNum,
+        limit:      limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
   } catch (err) {
     console.error('Get tests error:', err);
     return res.status(500).json({ error: 'Server error.' });

@@ -67,7 +67,7 @@ function CourseAccessModal({ student, onClose }) {
   };
 
   const enrolled = courses.filter(c => c.isEnrolled).length;
-  const price = (p) => p ? `₹${Math.round(p / 100).toLocaleString('en-IN')}` : 'Free';
+  const price = (p) => p ? `₹${Math.round(p).toLocaleString('en-IN')}` : 'Free';
 
   return createPortal(
     <div style={overlayBg}>

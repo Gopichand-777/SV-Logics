@@ -11,7 +11,7 @@ const CATEGORY_IMAGES = {
 };
 const DEFAULT_IMAGE = '/course-images/default-course.png';
 
-const formatPrice = (paise) => `₹${(paise / 100).toLocaleString('en-IN')}`;
+const formatPrice = (rupees) => `₹${(rupees).toLocaleString('en-IN')}`;
 
 export default function CourseCard({ course }) {
 

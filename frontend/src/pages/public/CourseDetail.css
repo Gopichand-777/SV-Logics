@@ -167,14 +167,12 @@
 ═══════════════════════════════════════════════════════════════════════════ */
 
 .cd-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
   display: flex;
   flex-direction: column;
   background: var(--cd-player-bg);
   color: var(--cd-player-text);
   font-family: 'Inter', -apple-system, sans-serif;
+  min-height: 100vh;
 }
 
 /* ── Player Top Bar ───────────────────────────────────────────────────── */
@@ -264,8 +262,8 @@
 }
 
 /* ── Player Body ──────────────────────────────────────────────────────── */
-.cd-body { flex: 1; display: flex; overflow: hidden; }
-.cd-left { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.cd-body { display: flex; flex-wrap: wrap; min-height: 0; }
+.cd-left { flex: 1 1 0; display: flex; flex-direction: column; min-width: 0; overflow-wrap: break-word; word-break: break-word; }
 
 /* ── Video Area ───────────────────────────────────────────────────────── */
 .cd-video-shell {
@@ -274,12 +272,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 20px;
+  padding: 4px 20px 12px;
 }
 .cd-video-wrap {
   width: 100%;
-  max-width: 720px;
-  border-radius: 10px;
   overflow: hidden;
   box-shadow: var(--cd-shadow-video);
 }
@@ -294,6 +290,7 @@
   width: 100%;
   height: 100%;
   border: none;
+  display: block;
 }
 .cd-no-video {
   width: 100%;
@@ -361,15 +358,14 @@
 
 /* ── Chapter Info Panel ───────────────────────────────────────────────── */
 .cd-info {
-  flex: 1;
-  overflow-y: auto;
   background: var(--cd-player-info-bg);
   border-top: 1px solid rgba(99,102,241,.10);
+  flex-shrink: 0;
 }
 .cd-info-inner {
-  max-width: 760px;
-  margin: 0 auto;
   padding: 22px 28px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 .cd-ch-meta-row {
   display: flex;
@@ -543,22 +539,18 @@
 
 /* ── Course Sidebar (enrolled view) ──────────────────────────────────── */
 .cd-sidebar {
-  width: 310px;
+  width: 320px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   background: var(--cd-player-sidebar-bg);
   border-left: 1px solid rgba(99,102,241,.10);
-  overflow-y: auto;
 }
 .cd-sb-header {
   padding: 16px 20px;
   flex-shrink: 0;
   border-bottom: 1px solid rgba(99,102,241,.10);
   background: rgba(99,102,241,.04);
-  position: sticky;
-  top: 0;
-  z-index: 5;
   backdrop-filter: blur(10px);
 }
 .cd-sb-title  { margin: 0; font-weight: 800; font-size: 0.9rem; color: var(--cd-player-text); }
@@ -652,6 +644,36 @@
   margin: 2px 0 0;
   font-size: 0.66rem;
   /* color toggled via inline style */
+}
+
+/* ── Enrolled View Responsive Breakpoints ────────────────────────────── */
+
+/* Below 1024px: sidebar drops below video+content, goes full width */
+@media (max-width: 1023px) {
+  .cd-sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid rgba(99,102,241,.10);
+    order: 2;           /* renders below cd-left */
+  }
+  .cd-left {
+    flex-basis: 100%;   /* takes full row */
+    order: 1;
+  }
+  .cd-video-shell {
+    padding: 0;         /* no black bars on mobile */
+  }
+}
+
+/* Below 640px: tighten spacing, stack chapter/materials grid */
+@media (max-width: 639px) {
+  .cd-info-inner {
+    padding: 16px;
+  }
+  .cd-bar {
+    padding: 0 12px;
+    gap: 10px;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

@@ -34,19 +34,22 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-page">
-      {/* Header */}
+      {/* Header — matches other page banners */}
       <div className="dashboard-header">
-        <div className="container">
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', marginBottom: 4 }}>
+        {/* Decorative circles — same as Live Classes / Tests banners */}
+        <div style={{ position: 'absolute', top: -40, right: -40, width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -60, left: '35%', width: 300, height: 300, borderRadius: '50%', background: 'rgba(99,102,241,0.07)', pointerEvents: 'none' }} />
+        <div className="container" style={{ position: 'relative' }}>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.88rem', marginBottom: 6 }}>
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
-          <h1 className="dashboard-header h1">
+          <h1 className="heading-lg" style={{ color: 'white' }}>
             Welcome back, {user?.name?.split(' ')[0]}! 👋
           </h1>
         </div>
       </div>
 
-      <div className="container" style={{ padding: '0 24px 60px' }}>
+      <div className="container" style={{ padding: '0 24px 60px', marginTop: -32 }}>
         {/* Stats */}
         <div className="dashboard-stats" style={{ marginBottom: 40 }}>
           {STAT_CARDS.map((s, i) => (

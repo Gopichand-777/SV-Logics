@@ -15,13 +15,36 @@ const router = Router();
  * @swagger
  * /tests:
  *   get:
- *     summary: Get all published mock tests
+ *     summary: Get paginated published mock tests
  *     tags: [Tests]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (1-indexed)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 9
+ *         description: Tests per page (max 50)
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filter by exam category (e.g. SSC CGL)
+ *       - in: query
+ *         name: subject
+ *         schema:
+ *           type: string
+ *         description: Filter by subject (case-insensitive match)
  *     responses:
  *       200:
- *         description: List of tests
+ *         description: Paginated list of tests
  *         content:
  *           application/json:
  *             schema:
@@ -31,8 +54,16 @@ const router = Router();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/MockTest'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:      { type: integer }
+ *                     page:       { type: integer }
+ *                     limit:      { type: integer }
+ *                     totalPages: { type: integer }
  */
 router.get('/', requireAuth, getTests);
+
 
 /**
  * @swagger

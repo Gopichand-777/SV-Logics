@@ -57,14 +57,20 @@ export default function Courses() {
     <div>
       {/* Hero Banner */}
       <div style={{
-        background: 'linear-gradient(135deg, #0f1f3d 0%, #1d3a8a 100%)',
+        background: 'linear-gradient(135deg, #0f1f3d 0%, #1d3a8a 50%, #1e1b4b 100%)',
         padding: '56px 0 80px',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        <div className="container" style={{ textAlign: 'center' }}>
+        {/* Decorative circles */}
+        <div style={{ position: 'absolute', top: -40, right: -40, width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -60, left: '30%', width: 300, height: 300, borderRadius: '50%', background: 'rgba(99,102,241,0.07)', pointerEvents: 'none' }} />
+
+        <div className="container" style={{ textAlign: 'center', position: 'relative' }}>
           <h1 className="heading-lg" style={{ color: 'white', marginBottom: 12 }}>
             All Courses
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: 32, fontSize: '1.05rem' }}>
+          <p style={{ color: 'rgba(255,255,255,0.65)', marginBottom: 32, fontSize: '1.05rem' }}>
             Choose your exam, pick a course, and start your preparation today.
           </p>
           <form onSubmit={handleSearch} className="search-bar" style={{ margin: '0 auto', maxWidth: 520 }}>

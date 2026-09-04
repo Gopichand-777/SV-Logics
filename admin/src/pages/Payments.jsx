@@ -53,7 +53,7 @@ export default function AdminPayments() {
           background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
           borderRadius: 10, padding: '10px 20px', fontSize: '0.9rem', fontWeight: 700, color: '#34d399',
         }}>
-          Total Revenue: ₹{(total / 100).toLocaleString('en-IN')}
+          Total Revenue: ₹{(total).toLocaleString('en-IN')}
         </div>
       </div>
 
@@ -106,7 +106,7 @@ export default function AdminPayments() {
 
                 {/* Amount */}
                 <td style={{ fontWeight: 700, color: '#fbbf24' }}>
-                  ₹{((p.amount || 0) / 100).toLocaleString('en-IN')}
+                  ₹{((p.amount) || 0).toLocaleString('en-IN')}
                 </td>
 
                 {/* Gateway */}

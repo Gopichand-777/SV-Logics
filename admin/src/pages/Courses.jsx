@@ -134,7 +134,7 @@ export default function AdminCourses() {
   const openCourseModal = (course = null) => {
     setEditCourse(course);
     setCourseForm(course
-      ? { ...course, price: course.price / 100, originalPrice: course.originalPrice ? course.originalPrice / 100 : '' }
+      ? { ...course, price: course.price, originalPrice: course.originalPrice ? course.originalPrice : '' }
       : initCourse);
     setCourseModal(true);
   };
@@ -145,8 +145,8 @@ export default function AdminCourses() {
     try {
       const payload = {
         ...courseForm,
-        price: Math.round(parseFloat(courseForm.price) * 100),
-        originalPrice: courseForm.originalPrice ? Math.round(parseFloat(courseForm.originalPrice) * 100) : null,
+        price: Math.round(parseFloat(courseForm.price)),
+        originalPrice: courseForm.originalPrice ? Math.round(parseFloat(courseForm.originalPrice)) : null,
       };
       if (editCourse) await adminApi.updateCourse(editCourse.id, payload);
       else            await adminApi.createCourse(payload);

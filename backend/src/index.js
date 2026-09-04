@@ -71,7 +71,7 @@ const swaggerDefinition = {
           slug: { type: 'string' },
           description: { type: 'string' },
           category: { type: 'string' },
-          price: { type: 'integer', description: 'Price in paise' },
+          price: { type: 'integer', description: 'Price in rupees' },
           isPublished: { type: 'boolean' },
           thumbnailUrl: { type: 'string' },
         },

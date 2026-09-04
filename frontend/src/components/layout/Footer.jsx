@@ -14,7 +14,6 @@ const SITE = {
 const QUICK_LINKS = [
   ['/', 'Home'],
   ['/courses', 'Courses'],
-  ['/login', 'Log In'],
 ];
 
 export default function Footer() {

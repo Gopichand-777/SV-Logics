@@ -50,8 +50,8 @@ export const courses = pgTable('courses', {
   description: text('description'),
   category: varchar('category', { length: 100 }).notNull(), // SSC CGL | SSC MTS | SSC CHSL | Banking (IBPS/SBI)
   examType: varchar('exam_type', { length: 100 }), // SSC | Banking
-  price: integer('price').notNull().default(0),           // in paise
-  originalPrice: integer('original_price'),               // in paise
+  price: integer('price').notNull().default(0),           // in rupees
+  originalPrice: integer('original_price'),               // in rupees
   durationHours: integer('duration_hours').default(0),
   chaptersCount: integer('chapters_count').default(0),
   isFeatured: boolean('is_featured').default(false),
@@ -149,7 +149,7 @@ export const payments = pgTable('payments', {
   id: serial('id').primaryKey(),
   studentId: integer('student_id').references(() => students.id).notNull(),
   courseId: integer('course_id').references(() => courses.id).notNull(),
-  amount: integer('amount').notNull(),   // in paise
+  amount: integer('amount').notNull(),   // in rupees
   currency: varchar('currency', { length: 10 }).default('INR'),
   status: varchar('status', { length: 30 }).default('pending'), // pending | success | failed
   gateway: varchar('gateway', { length: 50 }).default('mock'),  // mock | razorpay | stripe | cashfree
@@ -191,7 +191,7 @@ export const testAttempts = pgTable('test_attempts', {
 export const attemptAnswers = pgTable('attempt_answers', {
   id: serial('id').primaryKey(),
   attemptId: integer('attempt_id').references(() => testAttempts.id, { onDelete: 'cascade' }).notNull(),
-  questionId: integer('question_id').references(() => questions.id).notNull(),
+  questionId: integer('question_id').references(() => questions.id, { onDelete: 'cascade' }).notNull(),
   selectedOption: varchar('selected_option', { length: 1 }), // null if skipped
   isCorrect: boolean('is_correct'),
 });
