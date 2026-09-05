@@ -539,12 +539,55 @@
 
 /* ── Course Sidebar (enrolled view) ──────────────────────────────────── */
 .cd-sidebar {
-  width: 320px;
+  /* width is set via inline style (drag-resize); default 320px, min 240px, max 580px */
+  min-width: 240px;
+  max-width: 580px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   background: var(--cd-player-sidebar-bg);
   border-left: 1px solid rgba(99,102,241,.10);
+}
+
+/* ── Resize Handle ─────────────────────────────────────────────────── */
+.cd-resize-handle {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  transition: background 0.18s;
+  z-index: 10;
+  touch-action: none;
+}
+.cd-resize-handle:hover,
+.cd-resize-handle:active {
+  background: rgba(99, 102, 241, 0.10);
+}
+.cd-resize-handle-bar {
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(99, 102, 241, 0.20);
+  transition: background 0.18s, width 0.18s;
+  margin: 8px 0;
+}
+.cd-resize-handle:hover .cd-resize-handle-bar,
+.cd-resize-handle:active .cd-resize-handle-bar {
+  background: var(--cd-primary);
+  width: 3px;
+}
+
+/* ── Drag Guard (iframe event blocker) ──────────────────────────────── */
+/* Rendered over .cd-left only while dragging; blocks iframe from        */
+/* stealing mousemove/mouseup events so resize stays smooth.             */
+.cd-drag-guard {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  cursor: col-resize;
+  background: transparent;
 }
 .cd-sb-header {
   padding: 16px 20px;
@@ -651,7 +694,9 @@
 /* Below 1024px: sidebar drops below video+content, goes full width */
 @media (max-width: 1023px) {
   .cd-sidebar {
-    width: 100%;
+    width: 100% !important; /* override inline drag width on mobile */
+    min-width: unset;
+    max-width: unset;
     border-left: none;
     border-top: 1px solid rgba(99,102,241,.10);
     order: 2;           /* renders below cd-left */
@@ -662,6 +707,9 @@
   }
   .cd-video-shell {
     padding: 0;         /* no black bars on mobile */
+  }
+  .cd-resize-handle {
+    display: none;      /* drag handle not needed when sidebar is stacked */
   }
 }
 

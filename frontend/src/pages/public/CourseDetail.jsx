@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Clock, BookOpen, Lock, Play, ChevronDown, ChevronUp,
@@ -217,14 +217,82 @@ function ChapterInfoPanel({ chapter, prev, next, onPrev, onNext, materials }) {
   );
 }
 
+/* ─── Resizable Sidebar Hook ─────────────────────────────────────────────── */
+const SIDEBAR_MIN = 240;
+const SIDEBAR_MAX = 580;
+const SIDEBAR_DEFAULT = 320;
+const SIDEBAR_LS_KEY = 'svlogics-sidebar-width';
+
+function useSidebarResize() {
+  const stored = parseInt(localStorage.getItem(SIDEBAR_LS_KEY), 10);
+  const [width,      setWidth]      = useState(!isNaN(stored) ? stored : SIDEBAR_DEFAULT);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragging = useRef(false);
+  const startX   = useRef(0);
+  const startW   = useRef(width);
+
+  const beginDrag = useCallback((clientX) => {
+    dragging.current = true;
+    startX.current   = clientX;
+    startW.current   = width;
+    setIsDragging(true);
+    document.body.style.cursor     = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [width]);
+
+  const onMouseDown = useCallback((e) => {
+    e.preventDefault();
+    beginDrag(e.clientX);
+  }, [beginDrag]);
+
+  const onTouchStart = useCallback((e) => {
+    beginDrag(e.touches[0].clientX);
+  }, [beginDrag]);
+
+  useEffect(() => {
+    const onMove = (clientX) => {
+      if (!dragging.current) return;
+      const delta = startX.current - clientX; // drag left → sidebar wider
+      const next  = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, startW.current + delta));
+      setWidth(next);
+    };
+    const onUp = (finalW) => {
+      if (!dragging.current) return;
+      dragging.current               = false;
+      setIsDragging(false);
+      document.body.style.cursor     = '';
+      document.body.style.userSelect = '';
+      localStorage.setItem(SIDEBAR_LS_KEY, finalW);
+    };
+
+    const handleMouseMove  = (e) => onMove(e.clientX);
+    const handleMouseUp    = ()  => { setWidth(w => { onUp(w); return w; }); };
+    const handleTouchMove  = (e) => onMove(e.touches[0].clientX);
+    const handleTouchEnd   = ()  => { setWidth(w => { onUp(w); return w; }); };
+
+    window.addEventListener('mousemove',  handleMouseMove);
+    window.addEventListener('mouseup',    handleMouseUp);
+    window.addEventListener('touchmove',  handleTouchMove, { passive: true });
+    window.addEventListener('touchend',   handleTouchEnd);
+    return () => {
+      window.removeEventListener('mousemove',  handleMouseMove);
+      window.removeEventListener('mouseup',    handleMouseUp);
+      window.removeEventListener('touchmove',  handleTouchMove);
+      window.removeEventListener('touchend',   handleTouchEnd);
+    };
+  }, []);
+
+  return { width, isDragging, onMouseDown, onTouchStart };
+}
+
 /** Subject-grouped chapter sidebar */
-function CourseSidebar({ grouped, chapters, activeId, onSelect }) {
+function CourseSidebar({ grouped, chapters, activeId, onSelect, width }) {
   const allKeys = Object.keys(grouped);
   const [collapsed, setCollapsed] = useState({});
   const toggle = (k) => setCollapsed(s => ({ ...s, [k]: !s[k] }));
 
   return (
-    <div className="cd-sidebar cd-s">
+    <div className="cd-sidebar cd-s" style={{ width }}>
       <div className="cd-sb-header">
         <p className="cd-sb-title">Course Content</p>
         <p className="cd-sb-meta">{chapters.length} chapters · {allKeys.length} subjects</p>
@@ -303,6 +371,7 @@ function EnrolledView({ course, chapters, materials, navigate, fetchSignedUrl })
   const idx  = chapters.findIndex(c => c.id === active?.id);
   const prev = idx > 0 ? chapters[idx - 1] : null;
   const next = idx < chapters.length - 1 ? chapters[idx + 1] : null;
+  const { width: sidebarWidth, isDragging, onMouseDown: startResizeMouse, onTouchStart: startResizeTouch } = useSidebarResize();
 
   return (
     <div className="cd-overlay">
@@ -313,7 +382,7 @@ function EnrolledView({ course, chapters, materials, navigate, fetchSignedUrl })
         onBack={() => navigate(-1)}
       />
       <div className="cd-body">
-        <div className="cd-left">
+        <div className="cd-left" style={{ position: 'relative' }}>
           <VideoArea chapter={active} onFetchSignedUrl={fetchSignedUrl} />
           <ChapterInfoPanel
             chapter={active}
@@ -323,12 +392,30 @@ function EnrolledView({ course, chapters, materials, navigate, fetchSignedUrl })
             onNext={() => setActive(next)}
             materials={materials}
           />
+          {/* Transparent guard that blocks the iframe from stealing mouse events during drag */}
+          {isDragging && (
+            <div className="cd-drag-guard" aria-hidden="true" />
+          )}
         </div>
+
+        {/* ── Drag-to-resize handle ── */}
+        <div
+          className="cd-resize-handle"
+          onMouseDown={startResizeMouse}
+          onTouchStart={startResizeTouch}
+          title="Drag to resize sidebar"
+          role="separator"
+          aria-label="Resize course content sidebar"
+        >
+          <div className="cd-resize-handle-bar" />
+        </div>
+
         <CourseSidebar
           grouped={grouped}
           chapters={chapters}
           activeId={active?.id}
           onSelect={setActive}
+          width={sidebarWidth}
         />
       </div>
     </div>
